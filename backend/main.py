@@ -111,8 +111,15 @@ async def root():
 
 @app.get("/health")
 async def health():
-    from backend.database import check_db
-    db_ok = await check_db()
+    """Health check — reports ok if storage is reachable (JSON or PG)."""
+    from backend.storage.deps import get_backend
+    from backend.storage.json_backend import JsonBackend
+    storage_gen = get_backend()
+    storage = await storage_gen.__anext__()
+    try:
+        db_ok = await storage.is_available()
+    finally:
+        await storage_gen.aclose()
     return {
         "status": "ok" if db_ok else "degraded",
         "version": "0.4.0",

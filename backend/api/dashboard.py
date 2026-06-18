@@ -12,7 +12,6 @@ from typing import Optional
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from backend.database import check_db
 from backend.storage.backend import StorageBackend
 from backend.storage.deps import get_backend
 
@@ -46,7 +45,7 @@ class SourceBreakdown(BaseModel):
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats(storage: StorageBackend = Depends(get_backend)):
     """Aggregated dashboard statistics."""
-    db_ok = await check_db()
+    available = await storage.is_available()
     stats = await storage.get_stats()
 
     # Enrich with additional breakdowns
@@ -63,7 +62,7 @@ async def get_dashboard_stats(storage: StorageBackend = Depends(get_backend)):
         avg_match_score=round(stats.avg_match_score, 3),
         jobs_by_source={s.source: s.count for s in sources},
         applications_today=stats.applications_today,
-        database_connected=db_ok,
+        database_connected=available,
     )
 
 
@@ -75,9 +74,9 @@ async def get_source_breakdown(storage: StorageBackend = Depends(get_backend)):
 
 
 @router.get("/health")
-async def dashboard_health():
+async def dashboard_health(storage: StorageBackend = Depends(get_backend)):
     """Lightweight health status for the dashboard."""
-    db_ok = await check_db()
+    db_ok = await storage.is_available()
     return {
         "status": "ok" if db_ok else "degraded",
         "database": "connected" if db_ok else "disconnected",
