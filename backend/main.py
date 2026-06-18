@@ -21,7 +21,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from backend.api import applications, automation, cover_letter, dashboard, jobs, live_jobs, notifications, profiles
+from backend.api import applications, ats_checker, automation, cover_letter, dashboard, jobs, live_jobs, notifications, persona, profiles, resume
 from backend.config import settings
 from backend.database import init_db
 
@@ -84,6 +84,9 @@ app.include_router(automation.router)
 app.include_router(cover_letter.router)
 app.include_router(live_jobs.router)
 app.include_router(notifications.router)
+app.include_router(persona.router)
+app.include_router(resume.router)
+app.include_router(ats_checker.router)
 app.include_router(dashboard.router)
 
 

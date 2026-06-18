@@ -150,6 +150,26 @@ async def search_and_store_live_pm_jobs(
     source_counts["firecrawl"] = len(firecrawl_jobs)
     logger.info("Firecrawl: %d jobs (%d unique after dedup)", firecrawl_count, len(firecrawl_jobs))
 
+    # --- Source 4: Company career pages (Firecrawl-based, free tier) ---
+    # Scans target_companies.yaml list using Firecrawl + ATS adapters.
+    try:
+        from backend.services.career_page_scanner import scan_all_career_pages
+        career_jobs = await scan_all_career_pages(
+            role_keyword=keyword,
+            max_companies=10,
+        )
+        for j in career_jobs:
+            jid = j.get("id", "")
+            if jid and jid not in seen_ids:
+                seen_ids.add(jid)
+                j["source"] = "career_pages"
+                all_jobs.append(j)
+        source_counts["career_pages"] = len(career_jobs)
+        logger.info("Career pages: %d jobs from direct company scan", len(career_jobs))
+    except Exception as e:
+        logger.warning("Career page scan failed: %s", e)
+        source_counts["career_pages"] = 0
+
     # --- Store merged results ---
     data = _get_live_jobs_data()
     data[LIVE_JOBS_KEY] = all_jobs

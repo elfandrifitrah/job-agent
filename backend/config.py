@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     match_threshold: float = 0.65
     max_applications_per_day: int = 20
     human_review_mode: bool = True
+    auto_answer_screening: bool = False
 
     # ─── Paths ───
     data_dir: Path = Path("./data")

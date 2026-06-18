@@ -111,6 +111,8 @@ class CandidateProfile(BaseModel):
     preferred_locations: list[str] = Field(default_factory=list)
     remote_preferred: bool = False
 
+    persona: Optional[Persona] = None
+
     embedding: Optional[list[float]] = None
     parsed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     source_file: str = ""
@@ -131,6 +133,17 @@ class CandidateProfile(BaseModel):
                 f"{e.title} @ {e.company}" for e in self.experiences[:3]
             ],
         }
+
+
+class Persona(BaseModel):
+    """AI persona — the candidate's voice, style, and canned screening answers."""
+
+    communication_style: str = "professional"
+    key_messages: list[str] = Field(default_factory=list)
+    screening_answers: dict[str, str] = Field(default_factory=dict)
+    tone_description: str = ""
+    voice_sample: str = ""
+    onboarded: bool = False
 
 
 class MatchResult(BaseModel):

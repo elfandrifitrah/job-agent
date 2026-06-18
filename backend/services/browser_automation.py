@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from backend.config import settings
-from backend.models.profile import CandidateProfile
+from backend.models.profile import CandidateProfile, Persona
 
 logger = logging.getLogger(__name__)
 
@@ -354,9 +354,24 @@ class FormFiller:
         (["years experience", "years of experience", "experience years"], "years_experience", None),
     ]
 
-    def __init__(self, profile: CandidateProfile, cover_letter_text: str = ""):
+    def __init__(self, profile: CandidateProfile, cover_letter_text: str = "", persona: Persona | None = None):
         self.profile = profile
         self.cover_letter_text = cover_letter_text
+        self.persona = persona
+
+    def _answer_screening(self, field: FormField) -> str | None:
+        """Try to answer a screening question via persona or LLM generation."""
+        if not settings.auto_answer_screening:
+            return None
+        hints_str = " ".join(field.hints)
+        if not hints_str:
+            return None
+        from backend.services.screening_qa import answer_question
+        try:
+            return answer_question(hints_str, self.profile, self.persona)
+        except Exception as e:
+            logger.debug("Screening QA failed: %s", e)
+            return None
 
     def fill_fields(self, page, fields: list[FormField]) -> int:
         """Fill detected form fields with profile data. Returns count of filled fields."""
@@ -365,7 +380,10 @@ class FormFiller:
         for field in fields:
             value = self._match_value(field)
             if value is None or value == "":
-                continue
+                # Try screening QA as fallback for unmatched text fields
+                if field.field_type in (FieldType.TEXTAREA, FieldType.TEXT, FieldType.UNKNOWN):
+                    value = self._answer_screening(field)
+            if value is None or value == "":
 
             try:
                 if field.field_type == FieldType.SELECT:

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATS Resume Checker — Job Agent Dashboard</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.ats-header { margin-bottom:2rem; }
+.gauge-wrap { display:flex; gap:1.5rem; flex-wrap:wrap; margin:1.5rem 0; }
+.gauge { flex:1; min-width:140px; border:4px solid #222; padding:1rem; text-align:center; box-shadow:4px 4px 0 0 #222; }
+.gauge-value { font-size:2.5rem; font-weight:900; }
+.gauge-label { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.1em; margin-top:0.25rem; opacity:0.7; }
+.score-low { background:var(--accent-5); }
+.score-mid { background:#FFE0B2; }
+.score-high { background:var(--accent-2); }
+
+.criterion { display:flex; align-items:center; gap:0.75rem; padding:0.5rem 0; border-bottom:2px solid rgba(0,0,0,0.08); }
+.criterion:last-child { border-bottom:none; }
+.criterion-icon { width:24px; text-align:center; font-size:1.1rem; }
+.criterion-name { flex:1; font-weight:500; font-size:0.9rem; }
+.criterion-detail { font-size:0.8rem; opacity:0.6; flex:2; }
+.criterion-score { font-weight:700; font-size:0.9rem; min-width:3rem; text-align:right; }
+
+.suggestion { border-left:4px solid var(--accent-1); padding:0.5rem 1rem; margin:0.5rem 0; font-size:0.9rem; }
+.suggestion::before { content:"💡"; margin-right:0.5rem; }
+textarea { width:100%; min-height:200px; border:4px solid #222; padding:1rem; font-family:inherit; font-size:0.9rem; resize:vertical; box-sizing:border-box; }
+textarea:focus { outline:none; background:var(--cream); }
+.input-group { margin-bottom:1rem; }
+.input-group label { display:block; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; font-size:0.8rem; margin-bottom:0.4rem; }
+.input-group input, .input-group select { border:3px solid #222; padding:0.6rem 1rem; font-family:inherit; font-size:0.9rem; width:100%; box-sizing:border-box; }
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand">
+    <span class="nav-logo">▣</span>
+    <span>Job Agent</span>
+  </div>
+  <div class="nav-links">
+    <a href="/dashboard/" class="nav-link">Dashboard</a>
+    <a href="/dashboard/live-jobs.html" class="nav-link">Live Jobs</a>
+    <a href="/dashboard/persona.html" class="nav-link">AI Persona</a>
+    <a href="/dashboard/ats-checker.html" class="nav-link active">ATS Checker</a>
+  </div>
+  <div class="nav-status">
+    <span id="dbStatus" class="status-badge">checking...</span>
+    <span class="version-badge">v0.4.0</span>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="ats-header">
+    <h1>ATS Resume Checker</h1>
+    <p>Score your CV against 20+ ATS criteria — pure Python logic, zero API calls.</p>
+  </div>
+
+  <!-- Input section -->
+  <div class="card" id="inputCard">
+    <div class="card-header"><h2>Input</h2></div>
+    <div class="upload-body">
+      <div class="input-group">
+        <label for="inputMethod">Input method</label>
+        <select id="inputMethod" onchange="toggleInputMethod()">
+          <option value="manual">Paste CV text manually</option>
+          <option value="profile">Use stored profile</option>
+        </select>
+      </div>
+
+      <div id="manualInput">
+        <div class="input-group">
+          <label for="cvText">CV / Resume Text</label>
+          <textarea id="cvText" placeholder="Paste your CV text here..."></textarea>
+        </div>
+        <div class="input-group">
+          <label for="fileFormat">File format (for format scoring)</label>
+          <select id="fileFormat">
+            <option value=".pdf">PDF</option>
+            <option value=".docx">DOCX</option>
+            <option value=".txt">TXT</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="profileInput" style="display:none;">
+        <div class="input-group">
+          <label for="profileSelect">Select Profile</label>
+          <select id="profileSelect">
+            <option value="">— Select a profile —</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label for="jobSkills">Job-required skills (comma-separated, optional)</label>
+        <input type="text" id="jobSkills" placeholder="e.g. product management, agile, user research, analytics">
+      </div>
+
+      <button class="btn btn-primary" onclick="runCheck()">Run ATS Check</button>
+      <div id="runStatus" style="margin-top:0.75rem;"></div>
+    </div>
+  </div>
+
+  <!-- Results section -->
+  <div id="results" style="display:none;">
+    <!-- Gauges -->
+    <div class="card">
+      <div class="card-header"><h2>ATS Score</h2></div>
+      <div class="upload-body">
+        <div class="gauge-wrap">
+          <div class="gauge" id="compositeGauge"><div class="gauge-value" id="compositeScore">—</div><div class="gauge-label">Composite</div></div>
+          <div class="gauge" id="keywordGauge"><div class="gauge-value" id="keywordScore">—</div><div class="gauge-label">Keyword Match</div></div>
+          <div class="gauge" id="formatGauge"><div class="gauge-value" id="formatScore">—</div><div class="gauge-label">Format</div></div>
+          <div class="gauge" id="impactGauge"><div class="gauge-value" id="impactScore">—</div><div class="gauge-label">Impact</div></div>
+          <div class="gauge" id="completenessGauge"><div class="gauge-value" id="completenessScore">—</div><div class="gauge-label">Completeness</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detailed criteria -->
+    <div class="card">
+      <div class="card-header"><h2>Criteria Breakdown</h2></div>
+      <div class="upload-body" id="criteriaList"></div>
+    </div>
+
+    <!-- Suggestions -->
+    <div class="card">
+      <div class="card-header"><h2>Suggestions</h2></div>
+      <div class="upload-body" id="suggestionsList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api/ats';
+
+async function fetchJson(url, opts = {}) {
+  const r = await fetch(url, opts);
+  if (!r.ok) { const e = await r.text(); throw new Error(e); }
+  return r.json();
+}
+
+function toggleInputMethod() {
+  const method = document.getElementById('inputMethod').value;
+  document.getElementById('manualInput').style.display = method === 'manual' ? 'block' : 'none';
+  document.getElementById('profileInput').style.display = method === 'profile' ? 'block' : 'none';
+  if (method === 'profile') loadProfiles();
+}
+
+async function loadProfiles() {
+  try {
+    const data = await fetchJson('/api/profiles');
+    const sel = document.getElementById('profileSelect');
+    const profiles = Array.isArray(data) ? data : data?.profiles || [];
+    sel.innerHTML = '<option value="">— Select a profile —</option>' +
+      profiles.map(p => `<option value="${p.id}">${p.full_name || 'Unnamed'}</option>`).join('');
+  } catch (e) { console.error(e); }
+}
+
+function scoreClass(score) {
+  if (score >= 70) return 'score-high';
+  if (score >= 40) return 'score-mid';
+  return 'score-low';
+}
+
+async function runCheck() {
+  const status = document.getElementById('runStatus');
+  status.innerHTML = '<em>Checking...</em>';
+  const method = document.getElementById('inputMethod').value;
+
+  let cvText = '';
+  let fileExt = '.pdf';
+
+  if (method === 'manual') {
+    cvText = document.getElementById('cvText').value;
+    fileExt = document.getElementById('fileFormat').value;
+  } else {
+    const pid = document.getElementById('profileSelect').value;
+    if (!pid) { status.innerHTML = '<strong style="color:var(--accent-5)">Select a profile first.</strong>'; return; }
+    try {
+      const data = await fetchJson(`/api/profiles/${pid}`).catch(() => {
+        const profiles = JSON.parse(localStorage.getItem('profiles') || '[]');
+        return profiles.find(p => p.id === pid);
+      });
+      cvText = data?.raw_text || '';
+    } catch (e) {
+      status.innerHTML = `<strong style="color:var(--accent-5)">Error loading profile: ${e.message}</strong>`;
+      return;
+    }
+  }
+
+  if (!cvText || cvText.trim().length < 50) {
+    status.innerHTML = '<strong style="color:var(--accent-5)">CV text too short (min 50 chars).</strong>';
+    return;
+  }
+
+  const skillsInput = document.getElementById('jobSkills').value;
+  const jobSkills = skillsInput ? skillsInput.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+  try {
+    const result = await fetchJson(`${API}/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cv_text: cvText, job_skills: jobSkills, file_extension: fileExt }),
+    });
+
+    document.getElementById('results').style.display = 'block';
+    status.innerHTML = '<strong style="color:var(--accent-2)">✓ Check complete</strong>';
+
+    // Update gauges
+    const updateGauge = (id, scoreId, value, label) => {
+      const g = document.getElementById(id);
+      g.className = 'gauge ' + scoreClass(value);
+      document.getElementById(scoreId).textContent = Math.round(value);
+    };
+    updateGauge('compositeGauge', 'compositeScore', result.composite);
+    updateGauge('keywordGauge', 'keywordScore', result.keyword_match);
+    updateGauge('formatGauge', 'formatScore', result.format_score);
+    updateGauge('impactGauge', 'impactScore', result.impact_score);
+    updateGauge('completenessGauge', 'completenessScore', result.completeness_score);
+
+    // Criteria breakdown
+    const criteriaList = document.getElementById('criteriaList');
+    criteriaList.innerHTML = (result.criteria || []).map(c => `
+      <div class="criterion">
+        <span class="criterion-icon">${c.passed ? '✅' : '❌'}</span>
+        <span class="criterion-name">${c.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+        <span class="criterion-detail">${c.detail || ''}</span>
+        <span class="criterion-score">${Math.round(c.score)}%</span>
+      </div>
+    `).join('');
+
+    // Suggestions
+    const suggestionsList = document.getElementById('suggestionsList');
+    if (result.suggestions && result.suggestions.length > 0) {
+      suggestionsList.innerHTML = result.suggestions.map(s => `<div class="suggestion">${s}</div>`).join('');
+    } else {
+      suggestionsList.innerHTML = '<p>No suggestions — your CV looks great!</p>';
+    }
+
+    window.scrollTo({ top: document.getElementById('results').offsetTop - 80, behavior: 'smooth' });
+  } catch (e) {
+    status.innerHTML = `<strong style="color:var(--accent-5)">✗ Error: ${e.message}</strong>`;
+  }
+}
+</script>
+</body>
+</html>

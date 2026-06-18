@@ -1,0 +1,17 @@
+name: Daily Job Refresh
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger HF Space job refresh
+        run: |
+          curl -s -X POST "${{ secrets.HF_SPACE_URL || 'https://elfandifritrah-job-agent-dashboard.hf.space' }}/api/live-jobs/refresh" \
+            -H "Content-Type: application/json" \
+            -d '{"keyword":"Product Manager","max_results":50,"days_old":3}' \
+            --max-time 120 \
+            -w "\nHTTP Status: %{http_code}\n" || echo "Sleeping space may have timed out — retry will work"

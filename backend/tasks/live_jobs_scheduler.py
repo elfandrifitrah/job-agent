@@ -22,16 +22,41 @@ async def _refresh_pm_jobs() -> None:
     """Background task: fetch and store latest Product Manager remote jobs."""
     from backend.api.live_jobs import search_and_store_live_pm_jobs
 
-    logger.info("[Scheduler] Starting daily live PM jobs refresh...")
+    logger.info("[Scheduler] Starting live PM jobs refresh...")
     try:
         jobs = await search_and_store_live_pm_jobs(
             keyword="Product Manager",
             max_results=50,
-            days_old=1,
+            days_old=3,
         )
         logger.info("[Scheduler] Refreshed %d live PM jobs", len(jobs))
     except Exception as e:
         logger.error("[Scheduler] Failed to refresh live PM jobs: %s", e)
+
+
+async def _scan_career_pages() -> None:
+    """Background task: scan company career pages for new PM job listings."""
+    from backend.services.career_page_scanner import scan_all_career_pages
+
+    logger.info("[Scheduler] Starting career page scan...")
+    try:
+        jobs = await scan_all_career_pages(
+            role_keyword="Product Manager",
+            max_companies=15,
+        )
+        # Store career page jobs alongside live jobs
+        if jobs:
+            from backend.database import storage
+            existing = storage.get_jobs()
+            seen_ids = {j.get("id", "") for j in existing}
+            new_jobs = [j for j in jobs if j.get("id", "") not in seen_ids]
+            if new_jobs:
+                storage.save_jobs(new_jobs)
+            logger.info("[Scheduler] Career pages: %d new jobs from %d found", len(new_jobs), len(jobs))
+        else:
+            logger.info("[Scheduler] Career pages: no new jobs found")
+    except Exception as e:
+        logger.error("[Scheduler] Failed to scan career pages: %s", e)
 
 
 async def _send_daily_digest() -> None:
@@ -47,7 +72,7 @@ async def _send_daily_digest() -> None:
 
 
 def start_scheduler() -> AsyncIOScheduler:
-    """Start the APScheduler that refreshes live job listings daily.
+    """Start the APScheduler that refreshes live job listings continuously.
 
     Call this once on application startup.
     Returns the scheduler instance.
@@ -60,22 +85,41 @@ def start_scheduler() -> AsyncIOScheduler:
 
     scheduler = AsyncIOScheduler()
 
-    # Run every 24 hours
+    # Run every 6 hours (more frequent = fresher jobs)
     scheduler.add_job(
         _refresh_pm_jobs,
-        trigger=IntervalTrigger(hours=24),
+        trigger=IntervalTrigger(hours=6),
         id="refresh_live_pm_jobs",
         name="Refresh live Product Manager jobs",
         replace_existing=True,
-        misfire_grace_time=3600,  # 1 hour grace
+        misfire_grace_time=3600,
+    )
+
+    # Run career page scan every 12 hours
+    scheduler.add_job(
+        _scan_career_pages,
+        trigger=IntervalTrigger(hours=12),
+        id="scan_career_pages",
+        name="Scan company career pages",
+        replace_existing=True,
+        misfire_grace_time=3600,
     )
 
     # Also run once immediately on startup to populate initial data
     scheduler.add_job(
         _refresh_pm_jobs,
-        trigger="date",  # Run once now
+        trigger="date",
         id="refresh_live_pm_jobs_initial",
         name="Initial refresh of live PM jobs",
+        misfire_grace_time=300,
+    )
+
+    # Initial career page scan shortly after startup
+    scheduler.add_job(
+        _scan_career_pages,
+        trigger="date",
+        id="scan_career_pages_initial",
+        name="Initial career page scan",
         misfire_grace_time=300,
     )
 
@@ -92,7 +136,7 @@ def start_scheduler() -> AsyncIOScheduler:
     )
 
     scheduler.start()
-    logger.info("[Scheduler] Started — daily PM jobs refresh scheduled")
+    logger.info("[Scheduler] Started — jobs refresh every 6h, career pages every 12h")
     return scheduler
 
 

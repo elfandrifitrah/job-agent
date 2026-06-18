@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Persona — Job Agent Dashboard</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.persona-header { display:flex; align-items:center; gap:1rem; margin-bottom:2rem; }
+.persona-avatar { width:72px; height:72px; border:4px solid #222; box-shadow:4px 4px 0 0 #222; display:flex; align-items:center; justify-content:center; font-size:2rem; background:var(--cream); }
+.persona-info h1 { margin:0 0 0.25rem; }
+.persona-info .persona-tag { display:inline-block; border:3px solid #222; padding:0.2rem 0.75rem; font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; }
+.persona-info p { margin:0.25rem 0 0; opacity:0.7; font-size:0.9rem; }
+
+.question-card { border:4px solid #222; padding:1.25rem; margin-bottom:1rem; box-shadow:4px 4px 0 0 #222; }
+.question-card h3 { margin:0 0 0.5rem; font-size:1rem; }
+.question-card textarea { width:100%; min-height:80px; border:3px solid #222; padding:0.75rem; font-family:inherit; font-size:0.9rem; resize:vertical; box-sizing:border-box; }
+.question-card textarea:focus { outline:none; background:var(--cream); }
+.question-card .qnum { display:inline-block; border:3px solid #222; padding:0.15rem 0.5rem; font-size:0.75rem; font-weight:700; margin-right:0.5rem; }
+
+.key-msg { border-left:6px solid var(--accent-1); padding:0.75rem 1rem; margin:0.5rem 0; font-style:italic; }
+.voice-sample { border:3px solid #222; padding:1rem; margin:1rem 0; background:#fff; }
+.style-badge { display:inline-block; border:3px solid #222; padding:0.3rem 1rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; font-size:0.8rem; }
+
+.qa-pair { border:3px solid #222; margin:0.75rem 0; }
+.qa-pair .qa-q { background:var(--cream-dark); padding:0.75rem 1rem; font-weight:600; border-bottom:2px solid #222; }
+.qa-pair .qa-a { padding:0.75rem 1rem; }
+
+.profile-select { margin-bottom:2rem; }
+.profile-select select { border:4px solid #222; padding:0.75rem 1rem; font-family:inherit; font-size:1rem; background:#fff; box-shadow:4px 4px 0 0 #222; min-width:300px; }
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand">
+    <span class="nav-logo">▣</span>
+    <span>Job Agent</span>
+  </div>
+  <div class="nav-links">
+    <a href="/dashboard/" class="nav-link">Dashboard</a>
+    <a href="/dashboard/live-jobs.html" class="nav-link">Live Jobs</a>
+    <a href="/dashboard/persona.html" class="nav-link active">AI Persona</a>
+    <a href="/dashboard/ats-checker.html" class="nav-link">ATS Checker</a>
+  </div>
+  <div class="nav-status">
+    <span id="dbStatus" class="status-badge">checking...</span>
+    <span class="version-badge">v0.4.0</span>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="persona-header">
+    <div class="persona-avatar">🧠</div>
+    <div class="persona-info">
+      <h1>AI Persona Builder</h1>
+      <div class="persona-tag" id="personaStatusTag">Not Built</div>
+      <p>Build your AI digital twin — your voice, style, and canned answers for screening &amp; cover letters</p>
+    </div>
+  </div>
+
+  <!-- Profile selector -->
+  <div class="card profile-select">
+    <div class="card-header"><h2>Select Profile</h2></div>
+    <div class="upload-body">
+      <select id="profileSelect" onchange="loadPersona()">
+        <option value="">— No profiles available —</option>
+      </select>
+      <button class="btn btn-secondary" onclick="loadPersona()" style="margin-left:1rem;">Load</button>
+    </div>
+  </div>
+
+  <!-- Persona display (shown when persona exists) -->
+  <div id="personaDisplay" style="display:none;">
+    <div class="card">
+      <div class="card-header">
+        <h2>Voice &amp; Style</h2>
+        <button class="btn btn-secondary" onclick="rebuildPersona()">♻ Rebuild</button>
+      </div>
+      <div class="upload-body">
+        <p><span class="style-badge" id="commStyle">—</span> <span id="toneDesc" style="margin-left:0.5rem;"></span></p>
+        <h3 style="margin-top:1.5rem;">Key Messages</h3>
+        <div id="keyMessages"></div>
+        <h3 style="margin-top:1.5rem;">Voice Sample</h3>
+        <div class="voice-sample" id="voiceSample"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2>Screening Q&amp;A</h2></div>
+      <div class="upload-body" id="qaList"></div>
+    </div>
+  </div>
+
+  <!-- Onboarding Q&A form (shown when no persona) -->
+  <div id="onboardingForm" style="display:none;">
+    <div class="card">
+      <div class="card-header"><h2>Onboarding Questions</h2></div>
+      <div class="upload-body">
+        <p style="margin-bottom:1rem;">Answer these questions to build your AI persona. Your answers help the LLM learn your voice and style.</p>
+        <div id="questionsContainer"></div>
+        <button class="btn btn-primary" onclick="submitAnswers()" style="margin-top:1rem;">Build Persona</button>
+        <div id="buildStatus" style="margin-top:1rem;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api/persona';
+
+async function fetchJson(url, opts = {}) {
+  const r = await fetch(url, opts);
+  if (!r.ok) { const e = await r.text(); throw new Error(e); }
+  return r.json();
+}
+
+async function loadProfiles() {
+  try {
+    const data = await fetchJson('/api/profiles');
+    const sel = document.getElementById('profileSelect');
+    const profiles = Array.isArray(data) ? data : data?.profiles || [];
+    sel.innerHTML = '<option value="">— Select a profile —</option>' +
+      profiles.map(p => `<option value="${p.id}">${p.full_name || 'Unnamed'} — ${p.experiences?.[0]?.title || ''}</option>`).join('');
+  } catch (e) {
+    console.error('Failed to load profiles:', e);
+  }
+}
+
+async function loadPersona() {
+  const pid = document.getElementById('profileSelect').value;
+  if (!pid) return;
+  const display = document.getElementById('personaDisplay');
+  const form = document.getElementById('onboardingForm');
+  const status = document.getElementById('personaStatusTag');
+
+  try {
+    const data = await fetchJson(`${API}/${pid}`);
+    display.style.display = 'block';
+    form.style.display = 'none';
+    status.textContent = 'Built';
+    status.style.background = 'var(--accent-2)';
+    document.getElementById('commStyle').textContent = data.communication_style.toUpperCase();
+    document.getElementById('toneDesc').textContent = data.tone_description;
+    document.getElementById('voiceSample').textContent = data.voice_sample || 'No voice sample.';
+    document.getElementById('keyMessages').innerHTML = (data.key_messages || [])
+      .map(m => `<div class="key-msg">“${m}”</div>`).join('');
+
+    const qaDiv = document.getElementById('qaList');
+    const answers = data.screening_answers || {};
+    const keys = Object.keys(answers);
+    if (keys.length === 0) {
+      qaDiv.innerHTML = '<p>No Q&amp;A yet.</p>';
+    } else {
+      qaDiv.innerHTML = keys.map(k => `
+        <div class="qa-pair">
+          <div class="qa-q">${k}</div>
+          <div class="qa-a">${answers[k]}</div>
+        </div>
+      `).join('');
+    }
+  } catch (e) {
+    // No persona exists — show onboarding form
+    display.style.display = 'none';
+    form.style.display = 'block';
+    status.textContent = 'Not Built';
+    status.style.background = '';
+    loadQuestions();
+  }
+}
+
+async function loadQuestions() {
+  try {
+    const data = await fetchJson(`${API}/questions`);
+    const container = document.getElementById('questionsContainer');
+    container.innerHTML = data.questions.map((q, i) => `
+      <div class="question-card">
+        <h3><span class="qnum">Q${i + 1}</span>${q}</h3>
+        <textarea id="q${i}" placeholder="Type your answer..." rows="3"></textarea>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.error('Failed to load questions:', e);
+  }
+}
+
+async function submitAnswers() {
+  const pid = document.getElementById('profileSelect').value;
+  if (!pid) { alert('Select a profile first.'); return; }
+  const total = document.querySelectorAll('.question-card').length;
+  const answers = [];
+  for (let i = 0; i < total; i++) {
+    const ta = document.getElementById(`q${i}`);
+    if (ta && ta.value.trim()) {
+      const qCard = ta.closest('.question-card');
+      const qText = qCard.querySelector('h3').textContent.replace(/^Q\d+/, '').trim();
+      answers.push({ question: qText, answer: ta.value.trim() });
+    }
+  }
+  if (answers.length < 3) { alert('Please answer at least 3 questions.'); return; }
+  const status = document.getElementById('buildStatus');
+  status.innerHTML = '<em>Building persona via LLM analysis... may take 10-30s.</em>';
+  try {
+    await fetchJson(`${API}/submit-answers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile_id: pid, answers }),
+    });
+    status.innerHTML = '<strong style="color:var(--accent-2)">✓ Persona built successfully!</strong>';
+    loadPersona();
+  } catch (e) {
+    status.innerHTML = `<strong style="color:var(--accent-5)">✗ Error: ${e.message}</strong>`;
+  }
+}
+
+async function rebuildPersona() {
+  const pid = document.getElementById('profileSelect').value;
+  if (!pid) return;
+  if (!confirm('Rebuild persona from existing Q&A answers? This will overwrite current persona.')) return;
+  const status = document.getElementById('buildStatus');
+  status.innerHTML = '<em>Rebuilding persona...</em>';
+  try {
+    await fetchJson(`${API}/rebuild/${pid}`, { method: 'POST' });
+    status.innerHTML = '<strong style="color:var(--accent-2)">✓ Persona rebuilt!</strong>';
+    loadPersona();
+  } catch (e) {
+    status.innerHTML = `<strong style="color:var(--accent-5)">✗ Error: ${e.message}</strong>`;
+  }
+}
+
+loadProfiles();
+</script>
+</body>
+</html>
