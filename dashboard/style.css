@@ -1,20 +1,21 @@
 /* ─── Job Agent Dashboard Styles ─────────────────────────────────────────── */
 
 :root {
-  --bg: #0f1117;
-  --surface: #1a1d27;
-  --surface2: #232733;
-  --border: #2e3340;
-  --text: #e4e6ed;
-  --text-dim: #8b8fa0;
-  --primary: #6366f1;
-  --primary-hover: #818cf8;
-  --green: #22c55e;
-  --red: #ef4444;
-  --amber: #f59e0b;
-  --blue: #3b82f6;
-  --cyan: #06b6d4;
-  --radius: 8px;
+  --bg: #0a0e17;
+  --surface: #111827;
+  --surface2: #1a2332;
+  --border: #1e293b;
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --primary: #2dd4bf;
+  --primary-hover: #5eead4;
+  --green: #34d399;
+  --red: #fb7185;
+  --amber: #fbbf24;
+  --blue: #38bdf8;
+  --cyan: #2dd4bf;
+  --purple: #a78bfa;
+  --radius: 10px;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -22,6 +23,10 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg);
+  background-image:
+    linear-gradient(rgba(45,212,191,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45,212,191,0.02) 1px, transparent 1px);
+  background-size: 60px 60px;
   color: var(--text);
   line-height: 1.5;
   min-height: 100vh;
@@ -48,7 +53,10 @@ body {
 }
 
 .nav-logo {
-  color: var(--primary);
+  background: linear-gradient(135deg, var(--primary), var(--blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   font-size: 22px;
 }
 
@@ -75,7 +83,7 @@ body {
 
 .nav-link.active {
   color: var(--primary);
-  background: rgba(99,102,241,0.1);
+  background: rgba(45,212,191,0.1);
 }
 
 .nav-status {
@@ -252,7 +260,7 @@ body {
 }
 
 .status-submitted { background: rgba(34,197,94,0.15); color: var(--green); }
-.status-matched { background: rgba(59,130,246,0.15); color: var(--blue); }
+.status-matched { background: rgba(56,189,248,0.15); color: var(--blue); }
 .status-error { background: rgba(239,68,68,0.15); color: var(--red); }
 .status-captcha_blocked { background: rgba(245,158,11,0.15); color: var(--amber); }
 .status-pending { background: rgba(139,143,160,0.15); color: var(--text-dim); }
@@ -314,7 +322,7 @@ body {
 
 .btn-primary {
   background: var(--primary);
-  color: #fff;
+  color: #0a0e17;
 }
 
 .btn-primary:hover { background: var(--primary-hover); }
@@ -382,7 +390,7 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(99,102,241,0.03), rgba(6,182,212,0.03));
+  background: linear-gradient(135deg, rgba(45,212,191,0.03), rgba(56,189,248,0.03));
   opacity: 0;
   transition: opacity 0.3s;
 }
@@ -394,12 +402,12 @@ body {
 
 .upload-zone:hover {
   border-color: var(--primary);
-  background: rgba(99,102,241,0.04);
+  background: rgba(45,212,191,0.04);
 }
 
 .upload-zone.drag-over {
   border-color: var(--primary);
-  background: rgba(99,102,241,0.08);
+  background: rgba(45,212,191,0.08);
   border-style: solid;
   transform: scale(1.01);
 }
@@ -411,8 +419,8 @@ body {
 }
 
 .upload-zone-alt.has-file {
-  border-color: var(--cyan);
-  background: rgba(6,182,212,0.04);
+  border-color: var(--blue);
+  background: rgba(56,189,248,0.04);
 }
 
 .upload-zone-content {
@@ -551,7 +559,7 @@ body {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary), var(--cyan));
+  background: linear-gradient(90deg, var(--primary), var(--blue));
   border-radius: 3px;
   width: 0%;
   transition: width 0.4s ease;
@@ -585,7 +593,7 @@ body {
   align-items: flex-start;
   gap: 20px;
   padding: 20px 24px;
-  background: rgba(99,102,241,0.03);
+  background: rgba(45,212,191,0.03);
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
 }
@@ -594,7 +602,7 @@ body {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--cyan));
+  background: linear-gradient(135deg, var(--primary), var(--blue));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -681,23 +689,23 @@ body {
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;
-  background: rgba(99,102,241,0.1);
-  border: 1px solid rgba(99,102,241,0.2);
+  background: rgba(45,212,191,0.08);
+  border: 1px solid rgba(45,212,191,0.2);
   color: var(--primary-hover);
   transition: all 0.15s;
 }
 
 .skill-tag:hover {
-  background: rgba(99,102,241,0.2);
+  background: rgba(45,212,191,0.18);
   transform: translateY(-1px);
 }
 
-.skill-tag.language { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.2); color: #a5b4fc; }
-.skill-tag.framework { background: rgba(6,182,212,0.1); border-color: rgba(6,182,212,0.2); color: #67e8f9; }
-.skill-tag.cloud { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.2); color: #86efac; }
-.skill-tag.database { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.2); color: #fde68a; }
-.skill-tag.tool { background: rgba(168,85,247,0.1); border-color: rgba(168,85,247,0.2); color: #d8b4fe; }
-.skill-tag.soft { background: rgba(236,72,153,0.1); border-color: rgba(236,72,153,0.2); color: #f9a8d4; }
+.skill-tag.language { background: rgba(45,212,191,0.1); border-color: rgba(45,212,191,0.2); color: #5eead4; }
+.skill-tag.framework { background: rgba(56,189,248,0.1); border-color: rgba(56,189,248,0.2); color: #7dd3fc; }
+.skill-tag.cloud { background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.2); color: #86efac; }
+.skill-tag.database { background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.2); color: #fde68a; }
+.skill-tag.tool { background: rgba(167,139,250,0.1); border-color: rgba(167,139,250,0.2); color: #c4b5fd; }
+.skill-tag.soft { background: rgba(251,113,133,0.1); border-color: rgba(251,113,133,0.2); color: #fda4af; }
 
 .skill-tag-count {
   font-size: 10px;
@@ -719,7 +727,7 @@ body {
 }
 
 .experience-item:hover {
-  border-color: rgba(99,102,241,0.2);
+  border-color: rgba(45,212,191,0.2);
 }
 
 .exp-header {
@@ -739,7 +747,7 @@ body {
 
 .exp-company {
   font-size: 13px;
-  color: var(--cyan);
+  color: var(--blue);
 }
 
 .exp-dates {
@@ -820,12 +828,13 @@ body {
 
 /* ─── Analyze Results ────────────────────────────────────────────────────── */
 .btn-success {
-  background: #16a34a;
-  color: #fff;
+  background: var(--green);
+  color: #0a0e17;
 }
 
 .btn-success:hover {
-  background: #22c55e;
+  background: #6ee7b7;
+  color: #0a0e17;
 }
 
 .analyze-header {
@@ -846,8 +855,8 @@ body {
   font-size: 12px;
   padding: 3px 12px;
   border-radius: 12px;
-  background: rgba(99,102,241,0.15);
-  color: #a5b4fc;
+  background: rgba(45,212,191,0.15);
+  color: #5eead4;
   font-weight: 600;
 }
 
@@ -911,7 +920,7 @@ body {
 }
 
 .analyze-table tr:hover td {
-  background: rgba(99,102,241,0.05);
+  background: rgba(45,212,191,0.05);
 }
 
 .score-cell {
