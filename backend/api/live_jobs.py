@@ -7,6 +7,7 @@ Runs on-demand via API or daily via APScheduler.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any, Optional
@@ -56,8 +57,8 @@ SOURCES_KEY = "live_jobs_sources"
 CACHE_TTL_HOURS = 6  # Re-fetch if cache is older than 6 hours
 
 
-def _get_live_jobs_data() -> dict[str, Any]:
-    """Get the live jobs section from the data store."""
+def _get_or_create_live_jobs_data() -> dict[str, Any]:
+    """Get the live jobs section from the data store, initialising if absent."""
     data = json_storage._data  # type: ignore[attr-defined]
     if LIVE_JOBS_KEY not in data:
         data[LIVE_JOBS_KEY] = []
@@ -75,13 +76,14 @@ def _save_live_jobs_data() -> None:
 
 # ─── Multi-source search ────────────────────────────────────────────────────
 
-def _search_source(
+async def _search_source(
     source_cls: type,
     params: Any,
 ) -> tuple[list[dict[str, Any]], int]:
-    """Run a single source search and return (job_dicts, count)."""
+    """Run a single source search in a thread pool and return (job_dicts, count)."""
     source = source_cls()
-    job_postings = source.search(params)
+    loop = asyncio.get_running_loop()
+    job_postings = await loop.run_in_executor(None, source.search, params)
     job_dicts = [j.model_dump(mode="json") for j in job_postings]
     return job_dicts, len(job_dicts)
 
@@ -114,7 +116,7 @@ async def search_and_store_live_pm_jobs(
     source_counts: dict[str, int] = {}
 
     # --- Source 1: Jobicy (always available, free REST API) ---
-    jobicy_jobs, jobicy_count = _search_source(JobicySource, params)
+    jobicy_jobs, jobicy_count = await _search_source(JobicySource, params)
     for j in jobicy_jobs:
         jid = j.get("id", "")
         if jid and jid not in seen_ids:
@@ -125,7 +127,7 @@ async def search_and_store_live_pm_jobs(
 
     # --- Source 2: Adzuna (only if API keys are configured) ---
     if settings.adzuna_app_id and settings.adzuna_api_key:
-        adzuna_jobs, adzuna_count = _search_source(AdzunaSource, params)
+        adzuna_jobs, adzuna_count = await _search_source(AdzunaSource, params)
         for j in adzuna_jobs:
             jid = j.get("id", "")
             if jid and jid not in seen_ids:
@@ -140,7 +142,7 @@ async def search_and_store_live_pm_jobs(
 
     # --- Source 3: Firecrawl (free tier, no key needed for basic use) ---
     # Scrapes LinkedIn + Indeed. Uses ~2-3 pages per run (~60-90/month on free tier).
-    firecrawl_jobs, firecrawl_count = _search_source(FirecrawlSource, params)
+    firecrawl_jobs, firecrawl_count = await _search_source(FirecrawlSource, params)
     for j in firecrawl_jobs:
         jid = j.get("id", "")
         if jid and jid not in seen_ids:
@@ -171,7 +173,7 @@ async def search_and_store_live_pm_jobs(
         source_counts["career_pages"] = 0
 
     # --- Store merged results ---
-    data = _get_live_jobs_data()
+    data = _get_or_create_live_jobs_data()
     data[LIVE_JOBS_KEY] = all_jobs
     data[LAST_REFRESH_KEY] = datetime.now(UTC).isoformat()
     data[SOURCES_KEY] = source_counts
@@ -193,7 +195,7 @@ async def search_and_store_live_pm_jobs(
 @router.get("/listings", response_model=LiveSearchResponse)
 async def get_live_listings():
     """Get the latest cached live Product Manager job listings."""
-    data = _get_live_jobs_data()
+    data = _get_or_create_live_jobs_data()
     jobs = data.get(LIVE_JOBS_KEY, [])
     last_refresh = data.get(LAST_REFRESH_KEY)
     sources = data.get(SOURCES_KEY, {})
@@ -230,7 +232,7 @@ async def refresh_live_listings(
         days_old=days_old,
     )
 
-    data = _get_live_jobs_data()
+    data = _get_or_create_live_jobs_data()
     sources = data.get(SOURCES_KEY, {})
 
     return LiveSearchResponse(
@@ -245,7 +247,7 @@ async def refresh_live_listings(
 @router.get("/last-refresh")
 async def get_last_refresh():
     """Get the timestamp of the last refresh."""
-    data = _get_live_jobs_data()
+    data = _get_or_create_live_jobs_data()
     last_refresh = data.get(LAST_REFRESH_KEY)
     sources = data.get(SOURCES_KEY, {})
 

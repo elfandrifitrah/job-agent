@@ -5,6 +5,7 @@ API router for Resume Tailoring — rewrite bullet points per job and generate P
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -12,9 +13,12 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from backend.config import settings
 from backend.database import storage as json_storage
 from backend.models.profile import CandidateProfile, JobPosting, MatchResult
 from backend.services.resume_tailor import tailor_resume
+
+TAILORED_DIR = settings.data_dir / "tailored_resumes"
 
 logger = logging.getLogger(__name__)
 
@@ -90,8 +94,11 @@ async def tailor(req: TailorRequest):
 
 @router.get("/download")
 async def download_resume(path: str):
-    """Download a tailored resume PDF."""
-    file_path = Path(path)
+    """Download a tailored resume PDF. Path must be within the tailored_resumes directory."""
+    file_path = Path(path).resolve()
+    allowed = TAILORED_DIR.resolve()
+    if not str(file_path).startswith(str(allowed)):
+        raise HTTPException(status_code=400, detail="Invalid file path")
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(

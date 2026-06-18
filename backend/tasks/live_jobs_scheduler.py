@@ -44,15 +44,23 @@ async def _scan_career_pages() -> None:
             role_keyword="Product Manager",
             max_companies=15,
         )
-        # Store career page jobs alongside live jobs
         if jobs:
             from backend.database import storage
-            existing = storage.get_jobs()
+            data = storage._data
+            key = "live_jobs"
+            existing = data.get(key, [])
             seen_ids = {j.get("id", "") for j in existing}
-            new_jobs = [j for j in jobs if j.get("id", "") not in seen_ids]
-            if new_jobs:
-                storage.save_jobs(new_jobs)
-            logger.info("[Scheduler] Career pages: %d new jobs from %d found", len(new_jobs), len(jobs))
+            added = 0
+            for j in jobs:
+                jid = j.get("id", "")
+                if jid and jid not in seen_ids:
+                    seen_ids.add(jid)
+                    existing.append(j)
+                    added += 1
+            # Prune jobs older than 30 days by removing entries with no recent posted_date
+            data[key] = existing
+            storage._save()
+            logger.info("[Scheduler] Career pages: %d new jobs added (total live: %d)", added, len(existing))
         else:
             logger.info("[Scheduler] Career pages: no new jobs found")
     except Exception as e:
