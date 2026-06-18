@@ -99,7 +99,19 @@ Full API documentation at `/docs` when the server is running.
 
 ---
 
-## Benefits
+## Architecture plan status
+
+| Module | Status | What's implemented |
+|---|---|---|
+| **CV Intelligence** | ✅ Done | PDF/DOCX/TXT parsing, skill extraction, seniority detection, experience timeline, vector embedding generation |
+| **Job Discovery** | ✅ Mostly done | Jobicy (API), Adzuna (API), LinkedIn (Playwright), Indeed (Playwright + Firecrawl). ❌ Glassdoor not yet implemented |
+| **Semantic Matching** | ✅ Done | Vector cosine similarity (40%) + skill overlap scoring (40%) + seniority alignment (10%) + location match (10%). Configurable threshold, ranked results |
+| **Cover Letter Generator** | ✅ Done | AI-generated tailored cover letters via Claude/OpenAI, per-job alignment with CV experience, preview + clipboard in dashboard |
+| **Browser Automation** | ✅ Done | Playwright engine, ATS adapters for Greenhouse, Lever, Workday, generic fallback, CAPTCHA detection, human-in-the-loop fallback |
+| **Document Manager** | ⬜ Partial | Basic file storage for CVs and generated cover letters. Missing: versioning, format conversion, S3 integration |
+| **Application Tracker** | ✅ Done | Real-time dashboard with stats, status filters, source/status charts, notification settings, health monitoring |
+
+---
 
 - **Save hours per week** — No more manual job scrolling, form filling, or cover letter writing
 - **Higher quality applications** — Semantic matching ensures you only apply where you're a strong fit
@@ -119,7 +131,7 @@ Full API documentation at `/docs` when the server is running.
 | AI matching | Semantic embeddings + vector similarity |
 | Browser automation | Playwright |
 | Storage | JSON file backend (default) or PostgreSQL |
-| Job sources | Jobicy, Adzuna, custom scrape pipelines |
+| Job sources | Jobicy (API), Adzuna (API), LinkedIn (Playwright), Indeed (Playwright + Firecrawl) |
 | Deployment | Docker, Hugging Face Spaces |
 
 ---
