@@ -26,13 +26,10 @@
 .last-refresh-badge {
   font-size: 11px;
   padding: 4px 12px;
+  border-radius: var(--radius-sm);
   background: var(--surface2);
-  border: 3px solid var(--border);
-  box-shadow: var(--shadow);
-  color: var(--text-dim);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  font-weight: 600;
 }
 
 .last-refresh-badge.fresh {
@@ -48,13 +45,10 @@
 .job-count-badge {
   font-size: 12px;
   padding: 4px 14px;
+  border-radius: var(--radius-sm);
   background: var(--primary);
-  border: 3px solid var(--border);
-  box-shadow: var(--shadow);
-  font-weight: 700;
-  color: var(--text);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: #fff;
 }
 
 /* ─── Live Jobs Table ──────────────────────────────────────────────────── */
@@ -70,72 +64,67 @@
   text-align: left;
   padding: 10px 16px;
   background: var(--surface2);
-  color: var(--text-dim);
-  font-weight: 700;
+  color: var(--text-secondary);
+  font-weight: 600;
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  border-bottom: 4px solid var(--border);
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
 .live-jobs-table td {
   padding: 12px 16px;
-  border-bottom: 3px solid var(--border);
+  border-bottom: 1px solid var(--border);
   vertical-align: top;
-  font-weight: 500;
 }
 
 .live-jobs-table tr:hover td {
-  background: var(--primary);
+  background: var(--primary-light);
 }
 
 .live-jobs-table .job-title-cell {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
 }
 
 .live-jobs-table .job-company-cell {
   color: var(--text);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .live-jobs-table .job-location-cell {
-  color: var(--text-dim);
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
 .live-jobs-table .job-salary-cell {
   color: var(--text);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 12px;
   white-space: nowrap;
 }
 
 .live-jobs-table .job-date-cell {
-  color: var(--text-dim);
+  color: var(--text-secondary);
   font-size: 12px;
   white-space: nowrap;
-  font-weight: 600;
 }
 
 .live-jobs-table .job-source-tag {
   display: inline-block;
-  padding: 3px 10px;
+  padding: 2px 8px;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
+  border-radius: 100px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border: 3px solid var(--border);
-  box-shadow: var(--shadow);
+  letter-spacing: 0.04em;
 }
 
-.source-jobicy { background: var(--blue); color: var(--text); }
-.source-adzuna { background: var(--amber); color: var(--text); }
-.source-firecrawl { background: var(--red); color: var(--text); }
+.source-jobicy { background: var(--blue); color: #fff; }
+.source-adzuna { background: var(--amber); color: #fff; }
+.source-firecrawl { background: var(--red); color: #fff; }
 
 /* ─── Source Breakdown ──────────────────────────────────────────────────── */
 
@@ -150,51 +139,41 @@
   align-items: center;
   gap: 5px;
   font-size: 11px;
-  padding: 4px 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border: 3px solid var(--border);
-  box-shadow: var(--shadow);
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
 }
 
-.source-pill.jobicy { background: var(--blue); color: var(--text); }
-.source-pill.adzuna { background: var(--amber); color: var(--text); }
-.source-pill.firecrawl { background: var(--red); color: var(--text); }
+.source-pill.jobicy { background: var(--blue); color: #fff; }
+.source-pill.adzuna { background: var(--amber); color: #fff; }
+.source-pill.firecrawl { background: var(--red); color: #fff; }
 .source-pill .pill-count { font-weight: 700; }
+.source-pill .pill-pct { opacity: 0.8; }
 
 .live-jobs-table .apply-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 6px 14px;
+  padding: 5px 12px;
   font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border: 3px solid var(--border);
-  box-shadow: var(--shadow);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
   background: var(--primary);
-  color: var(--text);
+  color: #fff;
   text-decoration: none;
   transition: all 0.15s ease;
   white-space: nowrap;
 }
 
 .live-jobs-table .apply-link:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: var(--shadow-lg);
-}
-
-.live-jobs-table .apply-link:active {
-  transform: translate(1px, 1px);
-  box-shadow: none;
+  background: var(--primary-dark);
 }
 
 .live-jobs-table .job-description-cell {
   font-size: 12px;
-  color: var(--text-dim);
+  color: var(--text-secondary);
   max-width: 300px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -212,12 +191,10 @@
 .skills-mini-tags .skill-mini {
   font-size: 10px;
   padding: 2px 8px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border: 2px solid var(--border);
+  border-radius: 100px;
   background: var(--surface2);
-  color: var(--text-dim);
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 /* ─── Empty State ──────────────────────────────────────────────────────── */
@@ -225,7 +202,7 @@
 .live-jobs-empty {
   text-align: center;
   padding: 60px 20px;
-  color: var(--text-dim);
+  color: var(--text-secondary);
 }
 
 .live-jobs-empty .empty-icon {
@@ -236,16 +213,13 @@
 
 .live-jobs-empty .empty-title {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .live-jobs-empty .empty-text {
   font-size: 14px;
-  font-weight: 500;
   margin-bottom: 20px;
   max-width: 400px;
   margin-left: auto;
@@ -261,47 +235,40 @@
   align-items: center;
   flex-wrap: wrap;
   padding: 16px 20px;
-  border-bottom: 4px solid var(--border);
+  border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
 
 .search-controls label {
   font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-dim);
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
-.search-controls input[type="text"] {
+.search-controls input[type="text"],
+.search-controls select {
   background: var(--bg);
   color: var(--text);
-  border: 3px solid var(--border);
-  box-shadow: var(--shadow);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
   padding: 8px 14px;
   font-size: 12px;
   font-family: inherit;
-  font-weight: 600;
   width: 220px;
   transition: border-color 0.2s;
 }
 
-.search-controls input[type="text"]:focus {
+.search-controls input[type="text"]:focus,
+.search-controls select:focus {
   outline: none;
-  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .search-controls select {
-  background: var(--bg);
-  color: var(--text);
-  border: 3px solid var(--border);
-  box-shadow: var(--shadow);
-  padding: 8px 14px;
-  font-size: 12px;
-  font-family: inherit;
-  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
+  width: auto;
 }
 
 /* ─── Loading ──────────────────────────────────────────────────────────── */
@@ -309,15 +276,16 @@
 .live-jobs-loading {
   text-align: center;
   padding: 60px;
-  color: var(--text-dim);
+  color: var(--text-secondary);
 }
 
 .live-jobs-loading .spinner {
   display: inline-block;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border: 3px solid var(--border);
-  border-top: 3px solid var(--text);
+  border-top-color: var(--primary);
+  border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-bottom: 12px;
 }
@@ -330,23 +298,22 @@
 
 .seniority-badge {
   display: inline-block;
-  padding: 3px 10px;
+  padding: 2px 8px;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
+  border-radius: 100px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border: 3px solid var(--border);
-  box-shadow: var(--shadow);
+  letter-spacing: 0.04em;
 }
 
-.seniority-executive { background: var(--red); color: var(--text); }
-.seniority-principal { background: var(--purple); color: var(--text); }
-.seniority-staff { background: var(--purple); color: var(--text); }
-.seniority-senior { background: var(--amber); color: var(--text); }
-.seniority-mid { background: var(--blue); color: var(--text); }
-.seniority-junior { background: var(--green); color: var(--text); }
-.seniority-entry { background: var(--green); color: var(--text); }
-.seniority-unknown { background: var(--surface2); color: var(--text-dim); }
+.seniority-executive { background: var(--red); color: #fff; }
+.seniority-principal { background: var(--purple); color: #fff; }
+.seniority-staff { background: var(--purple); color: #fff; }
+.seniority-senior { background: var(--amber); color: #fff; }
+.seniority-mid { background: var(--blue); color: #fff; }
+.seniority-junior { background: var(--green); color: #fff; }
+.seniority-entry { background: var(--green); color: #fff; }
+.seniority-unknown { background: var(--surface2); color: var(--text-secondary); }
 
 /* ─── Toggle Switch ───────────────────────────────────────────────────── */
 
@@ -368,38 +335,41 @@
   cursor: pointer;
   inset: 0;
   background: var(--surface2);
-  border: 3px solid var(--border);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
   transition: all 0.2s;
 }
 
 .toggle-slider::before {
   content: '';
   position: absolute;
-  height: 14px;
-  width: 14px;
-  left: 2px;
-  bottom: 2px;
-  background: var(--text-dim);
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background: #fff;
+  border-radius: 50%;
   transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
 
 .toggle-switch input:checked + .toggle-slider {
   background: var(--green);
-  border-color: var(--border);
+  border-color: var(--green);
 }
 
 .toggle-switch input:checked + .toggle-slider::before {
   transform: translateX(18px);
-  background: var(--border);
+  background: #fff;
 }
 
 /* ─── Inline overrides from HTML ───────────────────────────────────────── */
 
 #notifToggleArea { display: inline-block !important; }
-#notifEmail { border: 3px solid var(--border) !important; box-shadow: var(--shadow) !important; font-family: inherit !important; font-weight: 600 !important; font-size: 12px !important; border-radius: 0 !important; }
+#notifEmail { border: 1px solid var(--border-strong) !important; border-radius: var(--radius-sm) !important; font-family: inherit !important; font-size: 12px !important; padding: 6px 12px !important; background: var(--bg) !important; color: var(--text) !important; width: 220px !important; }
 
 .card-header + .card-header {
-  border-top: 4px solid var(--border) !important;
+  border-top: 1px solid var(--border) !important;
 }
 
 /* ─── Responsive ───────────────────────────────────────────────────────── */
@@ -456,7 +426,7 @@
           </button>
         </div>
       </div>
-      <div class="card-header" style="border-top:4px solid var(--border);padding:12px 20px;">
+      <div class="card-header" style="border-top:1px solid var(--border);padding:12px 20px;">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;">
           <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text);">📧 Email Digest</span>
           <label class="toggle-switch" id="notifToggleArea" style="display:none;">
@@ -465,7 +435,7 @@
           </label>
           <span id="notifStatus" style="font-size:12px;color:var(--text-dim);">Loading...</span>
           <input type="email" id="notifEmail" placeholder="your@email.com"
-            style="background:var(--bg);color:var(--text);border:3px solid var(--border);box-shadow:var(--shadow);padding:6px 12px;font-size:12px;font-family:inherit;font-weight:600;width:220px;"
+            style="width:220px;"
           >
           <button class="btn btn-sm btn-secondary" onclick="saveNotifSettings()">Save</button>
           <button class="btn btn-sm btn-secondary" onclick="sendTestEmail()" id="testEmailBtn">Send Test</button>
@@ -479,7 +449,7 @@
       <label for="searchKeyword">Search jobs:</label>
       <input type="text" id="searchKeyword" value="Product Manager" placeholder="e.g. Product Manager">
       <label for="daysFilter">Posted:</label>
-      <select id="daysFilter" style="background:var(--bg);color:var(--text);border:3px solid var(--border);box-shadow:var(--shadow);padding:8px 14px;font-size:12px;font-family:inherit;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">
+      <select id="daysFilter" style="text-transform:uppercase;letter-spacing:0.03em;">
         <option value="1">Last 24 hours</option>
         <option value="3">Last 3 days</option>
         <option value="7">Last 7 days</option>

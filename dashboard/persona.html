@@ -7,27 +7,27 @@
 <link rel="stylesheet" href="style.css">
 <style>
 .persona-header { display:flex; align-items:center; gap:1rem; margin-bottom:2rem; }
-.persona-avatar { width:72px; height:72px; border:4px solid #222; box-shadow:4px 4px 0 0 #222; display:flex; align-items:center; justify-content:center; font-size:2rem; background:var(--cream); }
+.persona-avatar { width:64px; height:64px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.75rem; background:var(--primary-light); color:var(--primary); }
 .persona-info h1 { margin:0 0 0.25rem; }
-.persona-info .persona-tag { display:inline-block; border:3px solid #222; padding:0.2rem 0.75rem; font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; }
-.persona-info p { margin:0.25rem 0 0; opacity:0.7; font-size:0.9rem; }
+.persona-info .persona-tag { display:inline-block; background:var(--surface2); padding:0.2rem 0.75rem; font-size:0.75rem; font-weight:600; border-radius:100px; color:var(--text-secondary); }
+.persona-info p { margin:0.25rem 0 0; color:var(--text-secondary); font-size:0.9rem; }
 
-.question-card { border:4px solid #222; padding:1.25rem; margin-bottom:1rem; box-shadow:4px 4px 0 0 #222; }
-.question-card h3 { margin:0 0 0.5rem; font-size:1rem; }
-.question-card textarea { width:100%; min-height:80px; border:3px solid #222; padding:0.75rem; font-family:inherit; font-size:0.9rem; resize:vertical; box-sizing:border-box; }
-.question-card textarea:focus { outline:none; background:var(--cream); }
-.question-card .qnum { display:inline-block; border:3px solid #222; padding:0.15rem 0.5rem; font-size:0.75rem; font-weight:700; margin-right:0.5rem; }
+.question-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem; margin-bottom:1rem; }
+.question-card h3 { margin:0 0 0.5rem; font-size:1rem; font-weight:600; }
+.question-card textarea { width:100%; min-height:80px; border:1px solid var(--border-strong); border-radius:var(--radius-sm); padding:0.75rem; font-family:inherit; font-size:0.9rem; resize:vertical; box-sizing:border-box; background:var(--bg); }
+.question-card textarea:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-light); }
+.question-card .qnum { display:inline-block; background:var(--primary-light); color:var(--primary); padding:0.15rem 0.5rem; font-size:0.75rem; font-weight:700; border-radius:4px; margin-right:0.5rem; }
 
-.key-msg { border-left:6px solid var(--accent-1); padding:0.75rem 1rem; margin:0.5rem 0; font-style:italic; }
-.voice-sample { border:3px solid #222; padding:1rem; margin:1rem 0; background:#fff; }
-.style-badge { display:inline-block; border:3px solid #222; padding:0.3rem 1rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; font-size:0.8rem; }
+.key-msg { border-left:4px solid var(--primary); padding:0.75rem 1rem; margin:0.5rem 0; font-style:italic; background:var(--primary-light); border-radius:0 var(--radius-sm) var(--radius-sm) 0; }
+.voice-sample { border:1px solid var(--border); border-radius:var(--radius); padding:1rem; margin:1rem 0; background:var(--bg); line-height:1.7; }
+.style-badge { display:inline-block; background:var(--primary-light); color:var(--primary); padding:0.3rem 1rem; font-weight:600; border-radius:100px; font-size:0.8rem; }
 
-.qa-pair { border:3px solid #222; margin:0.75rem 0; }
-.qa-pair .qa-q { background:var(--cream-dark); padding:0.75rem 1rem; font-weight:600; border-bottom:2px solid #222; }
+.qa-pair { border:1px solid var(--border); border-radius:var(--radius-sm); margin:0.75rem 0; overflow:hidden; }
+.qa-pair .qa-q { background:var(--surface2); padding:0.75rem 1rem; font-weight:600; border-bottom:1px solid var(--border); }
 .qa-pair .qa-a { padding:0.75rem 1rem; }
 
 .profile-select { margin-bottom:2rem; }
-.profile-select select { border:4px solid #222; padding:0.75rem 1rem; font-family:inherit; font-size:1rem; background:#fff; box-shadow:4px 4px 0 0 #222; min-width:300px; }
+.profile-select select { border:1px solid var(--border-strong); border-radius:var(--radius-sm); padding:0.65rem 1rem; font-family:inherit; font-size:1rem; background:var(--surface); min-width:300px; }
 </style>
 </head>
 <body>
