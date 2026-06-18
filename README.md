@@ -1,10 +1,18 @@
 ---
-title: Job Agent Dashboard
-emoji: 👀
-colorFrom: indigo
-colorTo: pink
+title: Job Agent
+emoji: 🚀
+colorFrom: gray
+colorTo: gray
 sdk: docker
 pinned: false
 ---
 
-Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
+# Job Application Agent
+
+AI-powered automated job application agent — CV parsing, semantic matching, cover letter generation, browser automation, and dashboard.
+
+## API
+
+- Dashboard: `/dashboard`
+- API docs: `/docs`
+- Health: `/health`

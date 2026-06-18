@@ -1,0 +1,55 @@
+Alex Chen
+alex.chen@email.com
++1-555-234-5678
+linkedin.com/in/alexchen
+github.com/alexchen
+
+SENIOR SOFTWARE ENGINEER | FULL-STACK DEVELOPER
+
+Over 7 years of experience building scalable web applications and distributed systems. Passionate about clean architecture, developer tooling, and mentoring junior engineers.
+
+PROFESSIONAL EXPERIENCE
+
+TechCorp Inc., San Francisco, CA
+Senior Software Engineer — Jan 2021 – Present
+- Led migration of monolithic Rails app to microservices architecture using FastAPI and PostgreSQL
+- Designed and implemented real-time notification system handling 10M+ events/day
+- Reduced CI pipeline time by 60% through Docker layer caching and parallel test execution
+- Mentored 4 junior engineers through structured code reviews and pair programming sessions
+- Tech stack: Python, FastAPI, PostgreSQL, Redis, Docker, Kubernetes, AWS
+
+DataFlow Systems, Remote
+Software Engineer — Mar 2018 – Dec 2020
+- Built RESTful APIs serving 50K+ requests/min with 99.9% uptime
+- Implemented caching layer with Redis, reducing database load by 40%
+- Developed React-based dashboard for real-time data visualization
+- Tech stack: TypeScript, React, Node.js, Express, MongoDB, Redis
+
+StartupXYZ, New York, NY
+Junior Developer — Jun 2016 – Feb 2018
+- Contributed to frontend development using React and Redux
+- Wrote unit and integration tests achieving 85% code coverage
+- Participated in Agile/Scrum ceremonies and sprint planning
+
+EDUCATION
+
+Bachelor of Science in Computer Science, MIT — 2016
+GPA: 3.8/4.0
+
+SKILLS
+
+Languages: Python, TypeScript, JavaScript, SQL, Go, Rust (learning)
+Frameworks: FastAPI, React, Express, Django, Next.js
+Cloud & DevOps: AWS (EC2, S3, Lambda), Docker, Kubernetes, Terraform, CI/CD
+Databases: PostgreSQL, MongoDB, Redis, Elasticsearch
+Tools: Git, Jira, Grafana, Prometheus, Datadog
+Soft Skills: Team leadership, Technical writing, Public speaking, Agile/Scrum
+
+CERTIFICATIONS
+
+- AWS Certified Solutions Architect (2023)
+- Kubernetes Administrator (CKA) — In Progress
+
+INTERESTS
+
+Open source contribution, Technical blogging, Rock climbing, Photography

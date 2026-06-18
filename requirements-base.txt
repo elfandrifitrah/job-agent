@@ -1,0 +1,16 @@
+# ─── Core Runtime Dependencies ──────────────────────────────────────────────
+# These are needed by any mode (CLI or API server).
+python-dotenv>=1.1.0
+pydantic>=2.10.0
+pydantic-settings>=2.7.0
+httpx>=0.28.0
+typer>=0.15.0
+rich>=13.9.0
+jinja2>=3.1.0
+
+# CV parsing
+pdfplumber>=0.11.0
+python-docx>=1.1.0
+
+# Output generation (optional — comment out if weasyprint is problematic)
+# weasyprint>=62.0.0

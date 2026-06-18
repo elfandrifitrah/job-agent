@@ -1,0 +1,5 @@
+# ─── All Dependencies (combined convenience install) ──────────────────────
+-r requirements-dev.txt
+
+# Optional: browser automation (comment out if not using auto-apply)
+# -r requirements-automation.txt

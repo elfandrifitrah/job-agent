@@ -1,0 +1,35 @@
+[project]
+name = "job-agent"
+version = "0.1.0"
+description = "AI-powered automated job application agent"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Antigravity Labs"},
+]
+dependencies = [
+    "python-dotenv>=1.1.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "typer>=0.15.0",
+    "rich>=13.9.0",
+    "pdfplumber>=0.11.0",
+    "python-docx>=1.1.0",
+    "sentence-transformers>=3.4.0",
+    "chromadb>=0.6.0",
+    "spacy>=3.8.0",
+]
+
+[project.scripts]
+job-agent = "cli.run:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[build-system]
+requires = ["setuptools>=75.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["backend*", "cli*"]

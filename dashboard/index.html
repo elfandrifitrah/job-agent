@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Agent Dashboard</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand">
+    <span class="nav-logo">▣</span>
+    <span>Job Agent</span>
+  </div>
+  <div class="nav-links">
+    <a href="/dashboard/" class="nav-link active">Dashboard</a>
+    <a href="/dashboard/live-jobs.html" class="nav-link">Live Jobs</a>
+  </div>
+  <div class="nav-status">
+    <span id="dbStatus" class="status-badge">checking...</span>
+    <span id="version" class="version-badge">v0.4.0</span>
+  </div>
+</nav>
+
+<div class="container">
+  <!-- Stats Cards -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card">
+      <div class="stat-value" id="statProfiles">—</div>
+      <div class="stat-label">Profiles</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statJobs">—</div>
+      <div class="stat-label">Jobs Discovered</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statApplications">—</div>
+      <div class="stat-label">Applications</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statSubmitted">—</div>
+      <div class="stat-label">Submitted</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statAvgScore">—</div>
+      <div class="stat-label">Avg Match Score</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statToday">—</div>
+      <div class="stat-label">Applied Today</div>
+    </div>
+  </div>
+
+  <!-- Upload CV & Cover Letter -->
+  <div class="card upload-card">
+    <div class="card-header">
+      <h2>📄 Upload CV &amp; Cover Letter</h2>
+      <span class="card-subtitle">Upload your documents to parse and generate applications</span>
+    </div>
+    <div class="upload-body">
+      <div class="upload-grid">
+        <!-- CV Upload -->
+        <div class="upload-zone-wrapper">
+          <div class="upload-zone" id="cvDropZone">
+            <div class="upload-zone-content">
+              <div class="upload-icon">📋</div>
+              <div class="upload-title">Upload CV / Resume</div>
+              <div class="upload-hint">Drag &amp; drop or click to browse</div>
+              <div class="upload-formats">Supports PDF, DOCX, TXT</div>
+              <input type="file" id="cvFileInput" accept=".pdf,.docx,.doc,.txt" hidden>
+            </div>
+            <div class="upload-file-info" id="cvFileInfo" style="display:none">
+              <div class="file-chip">
+                <span class="file-chip-icon">📄</span>
+                <span class="file-chip-name" id="cvFileName"></span>
+                <span class="file-chip-size" id="cvFileSize"></span>
+                <button class="file-chip-remove" onclick="clearFile('cv')" title="Remove file">✕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cover Letter Upload -->
+        <div class="upload-zone-wrapper">
+          <div class="upload-zone upload-zone-alt" id="clDropZone">
+            <div class="upload-zone-content">
+              <div class="upload-icon">✉️</div>
+              <div class="upload-title">Cover Letter</div>
+              <div class="upload-hint">Optional — upload or generate later</div>
+              <div class="upload-formats">Supports PDF, DOCX, TXT</div>
+              <input type="file" id="clFileInput" accept=".pdf,.docx,.doc,.txt" hidden>
+            </div>
+            <div class="upload-file-info" id="clFileInfo" style="display:none">
+              <div class="file-chip">
+                <span class="file-chip-icon">✉️</span>
+                <span class="file-chip-name" id="clFileName"></span>
+                <span class="file-chip-size" id="clFileSize"></span>
+                <button class="file-chip-remove" onclick="clearFile('cl')" title="Remove file">✕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="upload-actions">
+        <button class="btn btn-primary btn-lg" onclick="parseCV()" id="parseBtn" disabled>
+          🔍 Parse CV &amp; Extract Profile
+        </button>
+        <button class="btn btn-secondary btn-lg" onclick="clearAllFiles()" id="clearBtn">
+          ✕ Clear All
+        </button>
+      </div>
+
+      <!-- Progress -->
+      <div class="upload-progress" id="uploadProgress" style="display:none">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-text" id="progressText">Processing...</div>
+      </div>
+
+      <!-- Upload Result / Error -->
+      <div id="uploadResult" class="upload-result" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Profile Preview (shown after parsing) -->
+  <div class="card profile-card" id="profileCard" style="display:none">
+    <div class="card-header">
+      <h2>👤 Parsed Profile</h2>
+      <div class="card-controls">
+        <button class="btn btn-sm btn-primary" onclick="generateCoverLetter()" id="genClBtn">
+          ✍️ Generate Cover Letter
+        </button>
+        <button class="btn btn-sm btn-secondary" onclick="matchProfile()" id="matchBtn">
+          ⚖️ Match Jobs
+        </button>
+        <button class="btn btn-sm btn-success" onclick="analyzeAndApply()" id="analyzeBtn">
+          🎯 Analyze &amp; Apply
+        </button>
+      </div>
+    </div>
+    <div class="profile-body" id="profileBody">
+      <!-- Filled dynamically -->
+    </div>
+  </div>
+
+  <!-- Two-column layout -->
+  <div class="row">
+    <!-- Main: Applications Table -->
+    <div class="col-main">
+      <div class="card">
+        <div class="card-header">
+          <h2>Recent Applications</h2>
+          <div class="card-controls">
+            <select id="statusFilter" onchange="loadApplications()">
+              <option value="">All Statuses</option>
+              <option value="submitted">Submitted</option>
+              <option value="matched">Matched</option>
+              <option value="error">Error</option>
+              <option value="captcha_blocked">CAPTCHA Blocked</option>
+              <option value="pending">Pending</option>
+            </select>
+            <button class="btn btn-sm" onclick="loadApplications()">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-table" id="applicationsTable">
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Job Title</th>
+                <th>Company</th>
+                <th>Score</th>
+                <th>ATS</th>
+                <th>Fields</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="applicationsBody">
+              <tr><td colspan="7" class="loading">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar: Source Breakdown -->
+    <div class="col-side">
+      <div class="card">
+        <div class="card-header">
+          <h2>Jobs by Source</h2>
+        </div>
+        <div class="chart-container" id="sourceChart">
+          <div class="loading">Loading...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>Status Distribution</h2>
+        </div>
+        <div class="chart-container" id="statusChart">
+          <div class="loading">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom: Action Panel -->
+  <div class="card action-panel">
+    <div class="card-header">
+      <h2>Quick Actions</h2>
+    </div>
+    <div class="action-grid">
+      <button class="btn btn-primary" onclick="discoverJobs()">🔍 Discover Jobs</button>
+      <button class="btn btn-secondary" onclick="window.open('/docs','_blank')">📖 API Docs</button>
+      <button class="btn btn-secondary" onclick="loadAll()">↻ Refresh All</button>
+    </div>
+    <div id="actionResult" class="action-result"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# ─── Automation Dependencies ───────────────────────────────────────────────
+-r requirements-ai.txt
+
+# Browser automation
+playwright>=1.49.0
+
+# Job queue (optional — needed for background automation)
+# celery>=5.4.0
+# redis>=5.2.0

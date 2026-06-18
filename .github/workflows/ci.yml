@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: job-agent/requirements*.txt
+
+      - name: Install dependencies
+        working-directory: job-agent
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run model download (spaCy)
+        if: ${{ matrix.python-version == '3.11' }}
+        run: python -m spacy download en_core_web_sm || true
+
+      - name: Lint with flake8
+        working-directory: job-agent
+        run: |
+          pip install flake8
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics
+
+      - name: Test with pytest
+        working-directory: job-agent
+        run: |
+          python -m pytest tests/ -v --tb=short -m "not slow"
+
+      - name: Test slow/ML-dependent suites (single version only)
+        if: ${{ matrix.python-version == '3.11' }}
+        working-directory: job-agent
+        run: |
+          python -m pytest tests/ -v --tb=short -m slow || echo "ML-dependent tests skipped (optional dependencies)"

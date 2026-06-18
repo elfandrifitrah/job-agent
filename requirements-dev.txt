@@ -1,0 +1,9 @@
+# ─── Dev / Testing Dependencies ────────────────────────────────────────────
+-r requirements-api.txt
+
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
+aiosqlite>=0.20.0
+httpx>=0.28.0
+flake8>=7.0.0
+coverage>=7.0.0

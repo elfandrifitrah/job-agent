@@ -1,0 +1,12 @@
+# ─── API Server Dependencies ───────────────────────────────────────────────
+-r requirements-ai.txt
+
+# Web framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+python-multipart>=0.0.12
+
+# Database
+sqlalchemy[asyncio]>=2.0.0
+asyncpg>=0.30.0
+alembic>=1.14.0

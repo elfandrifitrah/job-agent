@@ -1,0 +1,65 @@
+[
+  {
+    "title": "Senior Software Engineer - Backend",
+    "company": "Google",
+    "location": "Mountain View, CA",
+    "description": "Build and maintain distributed systems powering Google Search. Work with Go, C++, and Python on infrastructure serving billions of users.",
+    "skills_required": ["Python", "Go", "C++", "Distributed Systems", "Kubernetes", "Docker"],
+    "remote": false,
+    "salary_range": "$180K-$250K"
+  },
+  {
+    "title": "Full-Stack Engineer",
+    "company": "Stripe",
+    "location": "San Francisco, CA",
+    "description": "Build payment infrastructure APIs and developer tools. React frontend + Python backend with PostgreSQL.",
+    "skills_required": ["Python", "React", "TypeScript", "PostgreSQL", "API Design", "Redis"],
+    "remote": true,
+    "salary_range": "$170K-$230K"
+  },
+  {
+    "title": "Senior Backend Engineer",
+    "company": "Notion",
+    "location": "Remote, US",
+    "description": "Scale Notion's real-time collaboration platform. Work with TypeScript, Node.js, and PostgreSQL.",
+    "skills_required": ["TypeScript", "Node.js", "PostgreSQL", "Redis", "Distributed Systems", "React"],
+    "remote": true,
+    "salary_range": "$190K-$260K"
+  },
+  {
+    "title": "Data Engineer",
+    "company": "Airbnb",
+    "location": "San Francisco, CA",
+    "description": "Build data pipelines and infrastructure for analytics. Spark, Airflow, and Python.",
+    "skills_required": ["Python", "Spark", "Airflow", "SQL", "AWS", "Kafka"],
+    "remote": false,
+    "salary_range": "$160K-$220K"
+  },
+  {
+    "title": "DevOps / Platform Engineer",
+    "company": "Netflix",
+    "location": "Los Gatos, CA",
+    "description": "Build internal developer platform and CI/CD infrastructure. Kubernetes, Terraform, and Go.",
+    "skills_required": ["Kubernetes", "Docker", "Terraform", "Go", "AWS", "CI/CD", "Python"],
+    "remote": false,
+    "salary_range": "$200K-$280K"
+  },
+  {
+    "title": "Engineering Manager",
+    "company": "Shopify",
+    "location": "Remote, Canada/US",
+    "description": "Lead a team of 6-8 engineers building merchant-facing features. Python, React, and PostgreSQL.",
+    "skills_required": ["Team Leadership", "Python", "React", "PostgreSQL", "Agile", "Mentoring"],
+    "remote": true,
+    "salary_range": "$200K-$250K"
+  },
+  {
+    "title": "Junior Frontend Developer",
+    "company": "Webflow",
+    "location": "San Francisco, CA",
+    "description": "Build drag-and-drop website builder features. React, TypeScript, and CSS.",
+    "skills_required": ["React", "TypeScript", "CSS", "JavaScript"],
+    "remote": false,
+    "salary_range": "$120K-$150K"
+  }
+]

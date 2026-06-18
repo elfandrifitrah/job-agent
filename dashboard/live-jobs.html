@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Jobs — Job Agent Dashboard</title>
+<link rel="stylesheet" href="style.css">
+<style>
+/* ─── Live Jobs page specific styles ──────────────────────────────────── */
+
+.live-jobs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.live-jobs-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.last-refresh-badge {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.last-refresh-badge.fresh {
+  border-color: rgba(34,197,94,0.3);
+  color: var(--green);
+}
+
+.last-refresh-badge.stale {
+  border-color: rgba(245,158,11,0.3);
+  color: var(--amber);
+}
+
+.job-count-badge {
+  font-size: 13px;
+  padding: 3px 14px;
+  border-radius: 12px;
+  background: rgba(99,102,241,0.15);
+  color: #a5b4fc;
+  font-weight: 700;
+}
+
+/* ─── Live Jobs Table ──────────────────────────────────────────────────── */
+
+.live-jobs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.live-jobs-table th {
+  text-align: left;
+  padding: 10px 16px;
+  background: var(--surface2);
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.live-jobs-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.live-jobs-table tr:hover td {
+  background: var(--surface2);
+}
+
+.live-jobs-table .job-title-cell {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.live-jobs-table .job-company-cell {
+  color: var(--cyan);
+}
+
+.live-jobs-table .job-location-cell {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.live-jobs-table .job-salary-cell {
+  color: var(--green);
+  font-weight: 500;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.live-jobs-table .job-date-cell {
+  color: var(--text-dim);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.live-jobs-table .job-source-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.source-jobicy { background: rgba(99,102,241,0.12); color: #a5b4fc; }
+.source-adzuna { background: rgba(245,158,11,0.12); color: #fde68a; }
+.source-firecrawl { background: rgba(239,68,68,0.12); color: #fca5a5; }
+
+/* ─── Source Breakdown ──────────────────────────────────────────────────── */
+
+.sources-breakdown {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.source-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.source-pill.jobicy { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); color: #a5b4fc; }
+.source-pill.adzuna { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); color: #fde68a; }
+.source-pill.firecrawl { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: #fca5a5; }
+.source-pill .pill-count { font-weight: 700; }
+
+.live-jobs-table .apply-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  background: var(--primary);
+  text-decoration: none;
+  transition: background 0.2s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.live-jobs-table .apply-link:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.live-jobs-table .apply-link:active {
+  transform: scale(0.97);
+}
+
+.live-jobs-table .job-description-cell {
+  font-size: 12px;
+  color: var(--text-dim);
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.5;
+}
+
+/* ─── Skills Tags ──────────────────────────────────────────────────────── */
+
+.skills-mini-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.skills-mini-tags .skill-mini {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(99,102,241,0.08);
+  border: 1px solid rgba(99,102,241,0.15);
+  color: var(--text-dim);
+}
+
+/* ─── Empty State ──────────────────────────────────────────────────────── */
+
+.live-jobs-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-dim);
+}
+
+.live-jobs-empty .empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.live-jobs-empty .empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.live-jobs-empty .empty-text {
+  font-size: 14px;
+  margin-bottom: 20px;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+}
+
+/* ─── Search Controls ──────────────────────────────────────────────────── */
+
+.search-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(99,102,241,0.02);
+}
+
+.search-controls label {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.search-controls input[type="text"] {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  width: 220px;
+  transition: border-color 0.2s;
+}
+
+.search-controls input[type="text"]:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* ─── Loading ──────────────────────────────────────────────────────────── */
+
+.live-jobs-loading {
+  text-align: center;
+  padding: 60px;
+  color: var(--text-dim);
+}
+
+.live-jobs-loading .spinner {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--surface2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Seniority badges ─────────────────────────────────────────────────── */
+
+.seniority-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.seniority-executive { background: rgba(239,68,68,0.12); color: #fca5a5; }
+.seniority-principal { background: rgba(168,85,247,0.12); color: #d8b4fe; }
+.seniority-staff { background: rgba(168,85,247,0.08); color: #c4b5fd; }
+.seniority-senior { background: rgba(245,158,11,0.12); color: #fde68a; }
+.seniority-mid { background: rgba(59,130,246,0.12); color: #93c5fd; }
+.seniority-junior { background: rgba(34,197,94,0.12); color: #86efac; }
+.seniority-entry { background: rgba(34,197,94,0.08); color: #bbf7d0; }
+.seniority-unknown { background: var(--surface2); color: var(--text-dim); }
+
+/* ─── Toggle Switch ───────────────────────────────────────────────────── */
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  transition: all 0.3s;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background: var(--text-dim);
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: rgba(34,197,94,0.2);
+  border-color: var(--green);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(18px);
+  background: var(--green);
+}
+
+/* ─── Responsive ───────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .live-jobs-table .job-description-cell { display: none; }
+  .live-jobs-table .skills-mini-tags { display: none; }
+}
+
+@media (max-width: 700px) {
+  .search-controls { flex-direction: column; align-items: stretch; }
+  .search-controls input[type="text"] { width: 100%; }
+  .live-jobs-table .job-salary-cell { display: none; }
+  .live-jobs-table .job-date-cell { display: none; }
+}
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand">
+    <span class="nav-logo">▣</span>
+    <span>Job Agent</span>
+  </div>
+  <div class="nav-links">
+    <a href="/dashboard/" class="nav-link">Dashboard</a>
+    <a href="/dashboard/live-jobs.html" class="nav-link active">Live Jobs</a>
+  </div>
+  <div class="nav-status">
+    <span id="dbStatus" class="status-badge">checking...</span>
+    <span id="version" class="version-badge">v0.4.0</span>
+  </div>
+</nav>
+
+<div class="container">
+  <!-- Header -->
+  <div class="card">
+    <div class="card-header">
+      <div class="live-jobs-header">
+        <div>
+          <h2>📡 Live Product Manager Jobs</h2>
+          <span class="card-subtitle" id="subtitleText">
+            Remote positions — refreshed daily from multiple sources
+          </span>
+          <div id="sourcesBreakdown" class="sources-breakdown" style="margin-top:6px">
+          </div>
+        </div>
+        <div class="live-jobs-info">
+          <span id="jobCount" class="job-count-badge">0 jobs</span>
+          <span id="lastRefreshBadge" class="last-refresh-badge">checking...</span>
+          <button class="btn btn-primary" onclick="refreshLiveJobs()" id="refreshBtn">
+            ↻ Refresh Now
+          </button>
+        </div>
+      </div>
+      <div class="card-header" style="border-top:1px solid var(--border);padding:12px 20px;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;">
+          <span style="font-size:13px;font-weight:600;color:var(--text);">📧 Email Digest</span>
+          <label class="toggle-switch" id="notifToggleArea" style="display:none;">
+            <input type="checkbox" id="notifEnabled" onchange="toggleNotifications()">
+            <span class="toggle-slider"></span>
+          </label>
+          <span id="notifStatus" style="font-size:12px;color:var(--text-dim);">Loading...</span>
+          <input type="email" id="notifEmail" placeholder="your@email.com"
+            style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;width:220px;"
+          >
+          <button class="btn btn-sm btn-secondary" onclick="saveNotifSettings()">Save</button>
+          <button class="btn btn-sm btn-secondary" onclick="sendTestEmail()" id="testEmailBtn">Send Test</button>
+          <span id="notifLastSent" style="font-size:11px;color:var(--text-dim);"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search Controls -->
+    <div class="search-controls">
+      <label for="searchKeyword">Search jobs:</label>
+      <input type="text" id="searchKeyword" value="Product Manager" placeholder="e.g. Product Manager">
+      <label for="daysFilter">Posted:</label>
+      <select id="daysFilter" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px 14px;font-size:13px;">
+        <option value="1">Last 24 hours</option>
+        <option value="3">Last 3 days</option>
+        <option value="7">Last 7 days</option>
+        <option value="14">Last 14 days</option>
+      </select>
+      <button class="btn btn-secondary" onclick="refreshLiveJobs()">🔍 Search</button>
+    </div>
+
+    <!-- Results Area -->
+    <div id="liveJobsContent">
+      <div class="live-jobs-loading" id="loadingIndicator">
+        <div class="spinner"></div>
+        <div>Fetching latest Product Manager jobs...</div>
+      </div>
+      <div class="table-container" id="resultsTable" style="display:none">
+        <table class="live-jobs-table">
+          <thead>
+            <tr>
+              <th style="width:28%">Job Title</th>
+              <th>Company</th>
+              <th>Source</th>
+              <th>Location</th>
+              <th>Salary</th>
+              <th>Seniority</th>
+              <th>Posted</th>
+              <th style="width:90px">Action</th>
+            </tr>
+          </thead>
+          <tbody id="liveJobsBody">
+          </tbody>
+        </table>
+      </div>
+      <div class="live-jobs-empty" id="emptyState" style="display:none">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-title">No jobs found</div>
+        <div class="empty-text">
+          No Product Manager remote jobs were found from the last 24 hours.
+          Try a different search term or expand the time range.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── API Base ─────────────────────────────────────────────────────────────
+
+const API_BASE = window.location.origin;
+
+
+// ─── Load on page ready ───────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadLiveJobs();
+  loadDbStatus();
+  setInterval(loadDbStatus, 30000);
+});
+
+
+// ─── Load DB Status from main dashboard API ────────────────────────────────
+
+async function loadDbStatus() {
+  try {
+    const res = await fetch(`${API_BASE}/api/dashboard/health`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const badge = document.getElementById('dbStatus');
+    badge.textContent = data.database === 'connected' ? '✓ connected' : '✗ disconnected';
+    badge.className = 'status-badge ' + (data.database === 'connected' ? 'connected' : 'disconnected');
+  } catch (e) {
+    document.getElementById('dbStatus').textContent = '✗ error';
+    document.getElementById('dbStatus').className = 'status-badge disconnected';
+  }
+}
+
+
+// ─── Load Live Jobs ───────────────────────────────────────────────────────
+
+async function loadLiveJobs() {
+  const loading = document.getElementById('loadingIndicator');
+  const table = document.getElementById('resultsTable');
+  const empty = document.getElementById('emptyState');
+  const tbody = document.getElementById('liveJobsBody');
+
+  try {
+    loading.style.display = 'block';
+    table.style.display = 'none';
+    empty.style.display = 'none';
+
+    const res = await fetch(`${API_BASE}/api/live-jobs/listings`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    loading.style.display = 'none';
+
+    // Update info
+    document.getElementById('jobCount').textContent = data.total + ' jobs';
+
+    const badge = document.getElementById('lastRefreshBadge');
+    if (data.searched_at) {
+      const d = new Date(data.searched_at);
+      badge.textContent = 'Updated ' + d.toLocaleString();
+      badge.className = 'last-refresh-badge ' + (data.is_cached ? 'fresh' : 'stale');
+    } else {
+      badge.textContent = 'Never refreshed';
+      badge.className = 'last-refresh-badge stale';
+    }
+
+    if (!data.jobs || data.jobs.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+
+    table.style.display = 'block';
+
+    // Render job rows
+    tbody.innerHTML = data.jobs.map(job => {
+      const seniorityClass = 'seniority-' + (job.seniority || 'unknown');
+      const postedDate = job.posted_date || '—';
+      const salary = job.salary_range || '—';
+
+      const sourceClass = 'source-' + (job.source || 'jobicy');
+      const sourceColor = job.source === 'adzuna' ? '#f59e0b' : '#6366f1';
+
+      return `
+        <tr>
+          <td>
+            <div class="job-title-cell">${escapeHtml(job.title)}</div>
+          </td>
+          <td class="job-company-cell">${escapeHtml(job.company)}</td>
+          <td><span class="job-source-tag ${sourceClass}">${job.source || 'jobicy'}</span></td>
+          <td class="job-location-cell">${escapeHtml(job.location)}</td>
+          <td class="job-salary-cell">${escapeHtml(salary)}</td>
+          <td><span class="seniority-badge ${seniorityClass}">${job.seniority || '—'}</span></td>
+          <td class="job-date-cell">${formatDate(postedDate)}</td>
+          <td>
+            <a href="${escapeHtml(job.url)}" target="_blank" rel="noopener" class="apply-link">
+              Apply →
+            </a>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Render source breakdown
+    renderSourceBreakdown(data.sources || {});
+
+  } catch (e) {
+    loading.style.display = 'none';
+    console.error('Failed to load live jobs:', e);      tbody.innerHTML = `
+      <tr>
+        <td colspan="8" style="text-align:center;padding:40px;color:var(--text-dim);">
+          ⚠ Error loading jobs. Make sure the API server is running and try
+          <a href="javascript:refreshLiveJobs()" style="color:var(--primary);">refreshing</a>.
+        </td>
+      </tr>
+    `;
+    table.style.display = 'block';
+  }
+}
+
+
+// ─── Refresh Live Jobs ────────────────────────────────────────────────────
+
+async function refreshLiveJobs() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Fetching...';
+
+  const keyword = document.getElementById('searchKeyword').value || 'Product Manager';
+  const daysOld = parseInt(document.getElementById('daysFilter').value, 10) || 1;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/live-jobs/refresh?keyword=${encodeURIComponent(keyword)}&max_results=50&days_old=${daysOld}`, {
+      method: 'POST',
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    // Reload the table with fresh data
+    await loadLiveJobs();
+
+    // Show success feedback
+    const badge = document.getElementById('lastRefreshBadge');
+    badge.textContent = 'Just now';
+    badge.className = 'last-refresh-badge fresh';
+
+  } catch (e) {
+    console.error('Refresh failed:', e);
+    const badge = document.getElementById('lastRefreshBadge');
+    badge.textContent = '⚠ Refresh failed: ' + e.message;
+    badge.className = 'last-refresh-badge stale';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '↻ Refresh Now';
+  }
+}
+
+
+// ─── Email Notification Settings ──────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadNotifSettings();
+});
+
+async function loadNotifSettings() {
+  try {
+    const res = await fetch(`${API_BASE}/api/notifications/settings`);
+    if (!res.ok) return;
+    const settings = await res.json();
+
+    document.getElementById('notifEnabled').checked = settings.enabled;
+    document.getElementById('notifEmail').value = settings.recipient_email || '';
+    document.getElementById('notifToggleArea').style.display = 'inline-block';
+
+    if (settings.last_sent_at) {
+      const d = new Date(settings.last_sent_at);
+      document.getElementById('notifLastSent').textContent = 'Last sent: ' + d.toLocaleDateString();
+    }
+
+    updateNotifStatus(settings.enabled);
+  } catch (e) {
+    console.error('Failed to load notification settings:', e);
+  }
+}
+
+async function toggleNotifications() {
+  const enabled = document.getElementById('notifEnabled').checked;
+  const email = document.getElementById('notifEmail').value;
+
+  if (enabled && !email) {
+    document.getElementById('notifEnabled').checked = false;
+    alert('Please enter a recipient email address first.');
+    return;
+  }
+
+  await saveNotifSettings({ enabled });
+}
+
+async function saveNotifSettings(overrides = {}) {
+  const enabled = overrides.enabled !== undefined ? overrides.enabled : document.getElementById('notifEnabled').checked;
+  const email = document.getElementById('notifEmail').value;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/notifications/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled, recipient_email: email }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const settings = await res.json();
+
+    document.getElementById('notifEnabled').checked = settings.enabled;
+    updateNotifStatus(settings.enabled);
+
+    document.getElementById('notifToggleArea').style.display = 'inline-block';
+  } catch (e) {
+    console.error('Failed to save notification settings:', e);
+    alert('Failed to save settings. Is the API running?');
+  }
+}
+
+function updateNotifStatus(enabled) {
+  const el = document.getElementById('notifStatus');
+  if (enabled) {
+    el.textContent = '✅ Daily digest active (sends at 08:00 UTC)';
+    el.style.color = 'var(--green)';
+  } else {
+    el.textContent = '⏸️ Daily digest paused';
+    el.style.color = 'var(--text-dim)';
+  }
+}
+
+async function sendTestEmail() {
+  const btn = document.getElementById('testEmailBtn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Sending...';
+
+  const email = document.getElementById('notifEmail').value;
+  const params = email ? `?email=${encodeURIComponent(email)}` : '';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/notifications/send-test${params}`, {
+      method: 'POST',
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    alert(data.message);
+  } catch (e) {
+    alert('Failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Send Test';
+  }
+}
+
+
+// ─── Render Source Breakdown ───────────────────────────────────────────────
+
+function renderSourceBreakdown(sources) {
+  const container = document.getElementById('sourcesBreakdown');
+  const entries = Object.entries(sources);
+
+  if (!entries.length) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const total = Object.values(sources).reduce((a, b) => a + b, 0);
+
+  container.innerHTML = entries.map(([name, count]) => {
+    const pct = total > 0 ? ((count / total) * 100).toFixed(0) : 0;
+    return `
+      <span class="source-pill ${name}">
+        <span class="pill-count">${count}</span> ${name} <span class="pill-pct">(${pct}%)</span>
+      </span>
+    `;
+  }).join('') + `<span style="font-size:11px;color:var(--text-dim);margin-left:4px;">· ${total} total</span>`;
+}
+
+
+// ─── Helpers ──────────────────────────────────────────────────────────────
+
+function escapeHtml(str) {
+  if (!str) return '—';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr || dateStr === '—') return '—';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const now = new Date();
+    const diffMs = now - d;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return diffHours + 'h ago';
+    if (diffDays < 7) return diffDays + 'd ago';
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch (e) {
+    return dateStr;
+  }
+}
+</script>
+</body>
+</html>

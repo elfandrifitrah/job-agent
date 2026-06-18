@@ -1,0 +1,13 @@
+# ─── AI / ML Dependencies ──────────────────────────────────────────────────
+-r requirements-base.txt
+
+# Sentence embeddings
+sentence-transformers>=3.4.0
+
+# Vector store
+chromadb>=0.6.0
+
+# NLP for CV parsing
+spacy>=3.8.0
+
+# LLM API calls (via httpx, included in base)
