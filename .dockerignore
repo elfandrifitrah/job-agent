@@ -36,10 +36,15 @@ Thumbs.db
 tests/
 test_*.py
 
+# Cache & auto-generated
+.pytest_cache/
+
 # Docs & config
 README.md
 Makefile
-CONTRIBUTING.md
+
+# Deployment configs
+render.yaml
 
 # CI
 .github/
