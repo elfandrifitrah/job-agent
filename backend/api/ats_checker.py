@@ -10,7 +10,9 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from backend.services.ats_checker import AtsChecker
+from dataclasses import asdict
+
+from backend.services.ats_checker import AtsCheckResult, AtsChecker
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +62,7 @@ async def check_cv(req: CheckRequest):
         impact_score=result.impact_score,
         completeness_score=result.completeness_score,
         composite=result.composite,
-        criteria=[CriterionResult(**c.model_dump()) for c in result.criteria],
+        criteria=[CriterionResult(**asdict(c)) for c in result.criteria],
         suggestions=result.suggestions,
     )
 
@@ -101,6 +103,6 @@ async def check_cv_from_profile(req: ProfileCheckRequest):
         impact_score=result.impact_score,
         completeness_score=result.completeness_score,
         composite=result.composite,
-        criteria=[CriterionResult(**c.model_dump()) for c in result.criteria],
+        criteria=[CriterionResult(**asdict(c)) for c in result.criteria],
         suggestions=result.suggestions,
     )
