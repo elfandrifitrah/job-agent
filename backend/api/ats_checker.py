@@ -53,18 +53,22 @@ async def check_cv(req: CheckRequest):
     if not req.cv_text or len(req.cv_text.strip()) < 50:
         raise HTTPException(status_code=400, detail="CV text too short (min 50 chars)")
 
-    checker = AtsChecker(cv_text=req.cv_text, file_extension=req.file_extension)
-    result = checker.check_all(job_skills=req.job_skills)
+    try:
+        checker = AtsChecker(cv_text=req.cv_text, file_extension=req.file_extension)
+        result = checker.check_all(job_skills=req.job_skills)
 
-    return CheckResponse(
-        keyword_match=result.keyword_match,
-        format_score=result.format_score,
-        impact_score=result.impact_score,
-        completeness_score=result.completeness_score,
-        composite=result.composite,
-        criteria=[CriterionResult(**asdict(c)) for c in result.criteria],
-        suggestions=result.suggestions,
-    )
+        return CheckResponse(
+            keyword_match=result.keyword_match,
+            format_score=result.format_score,
+            impact_score=result.impact_score,
+            completeness_score=result.completeness_score,
+            composite=result.composite,
+            criteria=[CriterionResult(**asdict(c)) for c in result.criteria],
+            suggestions=result.suggestions,
+        )
+    except Exception as e:
+        logger.exception("ATS check error")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/check-profile", response_model=CheckResponse)
