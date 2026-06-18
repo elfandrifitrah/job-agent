@@ -25,9 +25,6 @@
 .qa-pair { border:1px solid var(--border); border-radius:var(--radius-sm); margin:0.75rem 0; overflow:hidden; }
 .qa-pair .qa-q { background:var(--surface2); padding:0.75rem 1rem; font-weight:600; border-bottom:1px solid var(--border); }
 .qa-pair .qa-a { padding:0.75rem 1rem; }
-
-.profile-select { margin-bottom:2rem; }
-.profile-select select { border:1px solid var(--border-strong); border-radius:var(--radius-sm); padding:0.65rem 1rem; font-family:inherit; font-size:1rem; background:var(--surface); min-width:300px; }
 </style>
 </head>
 <body>
@@ -54,22 +51,21 @@
     <div class="persona-info">
       <h1>AI Persona Builder</h1>
       <div class="persona-tag" id="personaStatusTag">Not Built</div>
-      <p>Build your AI digital twin — your voice, style, and canned answers for screening &amp; cover letters</p>
+      <p>Build your AI digital twin — your voice, style, and canned answers for screening &amp; cover letters. <br><small>🔒 All data processed locally. Raw text sent to server only for LLM analysis, nothing stored.</small></p>
     </div>
   </div>
 
-  <!-- Profile selector -->
-  <div class="card profile-select">
-    <div class="card-header"><h2>Select Profile</h2></div>
+  <!-- Profile info from localStorage -->
+  <div class="card" id="profileInfoCard">
+    <div class="card-header"><h2>Your Profile</h2></div>
     <div class="upload-body">
-      <select id="profileSelect" onchange="loadPersona()">
-        <option value="">— No profiles available —</option>
-      </select>
-      <button class="btn btn-secondary" onclick="loadPersona()" style="margin-left:1rem;">Load</button>
+      <div id="localProfileDisplay">
+        <p style="color:var(--text-secondary);">No profile found. Go to the <a href="/dashboard/">Dashboard</a> to parse your CV first.</p>
+      </div>
     </div>
   </div>
 
-  <!-- Persona display (shown when persona exists) -->
+  <!-- Persona display -->
   <div id="personaDisplay" style="display:none;">
     <div class="card">
       <div class="card-header">
@@ -91,12 +87,12 @@
     </div>
   </div>
 
-  <!-- Onboarding Q&A form (shown when no persona) -->
+  <!-- Onboarding Q&A form -->
   <div id="onboardingForm" style="display:none;">
     <div class="card">
       <div class="card-header"><h2>Onboarding Questions</h2></div>
       <div class="upload-body">
-        <p style="margin-bottom:1rem;">Answer these questions to build your AI persona. Your answers help the LLM learn your voice and style.</p>
+        <p style="margin-bottom:1rem;">Answer these questions to build your AI persona. Your answers + CV text are sent to the LLM for analysis. Nothing is stored on the server.</p>
         <div id="questionsContainer"></div>
         <button class="btn btn-primary" onclick="submitAnswers()" style="margin-top:1rem;">Build Persona</button>
         <div id="buildStatus" style="margin-top:1rem;"></div>
@@ -106,7 +102,7 @@
 </div>
 
 <script>
-const API = '/api/persona';
+const PERSONA_API = '/api/persona';
 
 async function fetchJson(url, opts = {}) {
   const r = await fetch(url, opts);
@@ -114,78 +110,87 @@ async function fetchJson(url, opts = {}) {
   return r.json();
 }
 
-async function loadProfiles() {
-  try {
-    const data = await fetchJson('/api/profiles');
-    const sel = document.getElementById('profileSelect');
-    const profiles = Array.isArray(data) ? data : data?.profiles || [];
-    sel.innerHTML = '<option value="">— Select a profile —</option>' +
-      profiles.map(p => `<option value="${p.id}">${p.full_name || 'Unnamed'} — ${p.experiences?.[0]?.title || ''}</option>`).join('');
-  } catch (e) {
-    console.error('Failed to load profiles:', e);
+function loadLocalProfile() {
+  const saved = localStorage.getItem('ja_profile');
+  const display = document.getElementById('localProfileDisplay');
+  if (saved) {
+    const p = JSON.parse(saved);
+    display.innerHTML = `
+      <p><strong>${p.full_name || 'Candidate'}</strong>
+      ${p.email ? ' · ' + p.email : ''}
+      ${p.seniority ? ' · ' + p.seniority : ''}
+      ${p.years_experience ? ' · ' + p.years_experience + ' years' : ''}</p>
+      <p style="font-size:0.85rem;color:var(--text-secondary);margin-top:4px;">
+        ${(p.skills || []).length} skills · ${(p.experiences || []).length} roles
+        <br><small>🔒 Stored in browser localStorage only</small>
+      </p>`;
+    return p;
   }
+  display.innerHTML = '<p style="color:var(--text-secondary);">No profile found. Go to the <a href="/dashboard/">Dashboard</a> to parse your CV first.</p>';
+  return null;
 }
 
 async function loadPersona() {
-  const pid = document.getElementById('profileSelect').value;
-  if (!pid) return;
+  const profile = loadLocalProfile();
+  if (!profile) return;
+
   const display = document.getElementById('personaDisplay');
   const form = document.getElementById('onboardingForm');
   const status = document.getElementById('personaStatusTag');
 
-  try {
-    const data = await fetchJson(`${API}/${pid}`);
-    display.style.display = 'block';
-    form.style.display = 'none';
-    status.textContent = 'Built';
-    status.style.background = 'var(--accent-2)';
-    document.getElementById('commStyle').textContent = data.communication_style.toUpperCase();
-    document.getElementById('toneDesc').textContent = data.tone_description;
-    document.getElementById('voiceSample').textContent = data.voice_sample || 'No voice sample.';
-    document.getElementById('keyMessages').innerHTML = (data.key_messages || [])
-      .map(m => `<div class="key-msg">“${m}”</div>`).join('');
+  const savedPersona = localStorage.getItem('ja_persona');
+  if (savedPersona) {
+    try {
+      const data = JSON.parse(savedPersona);
+      display.style.display = 'block';
+      form.style.display = 'none';
+      status.textContent = 'Built';
+      status.style.background = 'var(--accent-2)';
+      document.getElementById('commStyle').textContent = (data.communication_style || '').toUpperCase();
+      document.getElementById('toneDesc').textContent = data.tone_description || '';
+      document.getElementById('voiceSample').textContent = data.voice_sample || 'No voice sample.';
+      document.getElementById('keyMessages').innerHTML = (data.key_messages || []).map(m => `<div class="key-msg">"${m}"</div>`).join('');
 
-    const qaDiv = document.getElementById('qaList');
-    const answers = data.screening_answers || {};
-    const keys = Object.keys(answers);
-    if (keys.length === 0) {
-      qaDiv.innerHTML = '<p>No Q&amp;A yet.</p>';
-    } else {
-      qaDiv.innerHTML = keys.map(k => `
-        <div class="qa-pair">
-          <div class="qa-q">${k}</div>
-          <div class="qa-a">${answers[k]}</div>
-        </div>
-      `).join('');
-    }
-  } catch (e) {
-    // No persona exists — show onboarding form
-    display.style.display = 'none';
-    form.style.display = 'block';
-    status.textContent = 'Not Built';
-    status.style.background = '';
-    loadQuestions();
+      const qaDiv = document.getElementById('qaList');
+      const answers = data.screening_answers || {};
+      const keys = Object.keys(answers);
+      if (keys.length === 0) {
+        qaDiv.innerHTML = '<p>No Q&amp;A yet.</p>';
+      } else {
+        qaDiv.innerHTML = keys.map(k =>
+          `<div class="qa-pair"><div class="qa-q">${k}</div><div class="qa-a">${answers[k]}</div></div>`
+        ).join('');
+      }
+      return;
+    } catch (e) {}
   }
+
+  display.style.display = 'none';
+  form.style.display = 'block';
+  status.textContent = 'Not Built';
+  status.style.background = '';
+  loadQuestions();
 }
 
 async function loadQuestions() {
   try {
-    const data = await fetchJson(`${API}/questions`);
+    const data = await fetchJson(`${PERSONA_API}/questions`);
     const container = document.getElementById('questionsContainer');
-    container.innerHTML = data.questions.map((q, i) => `
-      <div class="question-card">
+    container.innerHTML = data.questions.map((q, i) =>
+      `<div class="question-card">
         <h3><span class="qnum">Q${i + 1}</span>${q}</h3>
         <textarea id="q${i}" placeholder="Type your answer..." rows="3"></textarea>
-      </div>
-    `).join('');
+      </div>`
+    ).join('');
   } catch (e) {
     console.error('Failed to load questions:', e);
   }
 }
 
 async function submitAnswers() {
-  const pid = document.getElementById('profileSelect').value;
-  if (!pid) { alert('Select a profile first.'); return; }
+  const profile = loadLocalProfile();
+  if (!profile) { alert('No profile found. Parse a CV on the Dashboard first.'); return; }
+
   const total = document.querySelectorAll('.question-card').length;
   const answers = [];
   for (let i = 0; i < total; i++) {
@@ -197,15 +202,35 @@ async function submitAnswers() {
     }
   }
   if (answers.length < 3) { alert('Please answer at least 3 questions.'); return; }
+
   const status = document.getElementById('buildStatus');
-  status.innerHTML = '<em>Building persona via LLM analysis... may take 10-30s.</em>';
+    status.innerHTML = '<em>Building persona via LLM analysis... may take 10-30s.</em>';
+
   try {
-    await fetchJson(`${API}/submit-answers`, {
+    const result = await fetchJson(`${PERSONA_API}/build`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ profile_id: pid, answers }),
+      body: JSON.stringify({
+        name: profile.full_name || 'Candidate',
+        raw_text: profile.raw_text || '',
+        skills: (profile.skills || []).map(s => typeof s === 'string' ? s : s.name),
+        experiences: (profile.experiences || []).map(e => ({
+          title: e.title, company: e.company,
+          description: e.description,
+          start_date: e.start_date, end_date: e.end_date,
+        })),
+        education: (profile.education || []).map(e => ({
+          institution: e.institution || e.school,
+          degree: e.degree, field: e.field,
+        })),
+        years_experience: profile.years_experience || 0,
+        seniority: profile.seniority || 'mid',
+        answers,
+      }),
     });
-    status.innerHTML = '<strong style="color:var(--accent-2)">✓ Persona built successfully!</strong>';
+
+    localStorage.setItem('ja_persona', JSON.stringify(result));
+    status.innerHTML = '<strong style="color:var(--accent-2)">✓ Persona built successfully! Stored in browser only.</strong>';
     loadPersona();
   } catch (e) {
     status.innerHTML = `<strong style="color:var(--accent-5)">✗ Error: ${e.message}</strong>`;
@@ -213,13 +238,64 @@ async function submitAnswers() {
 }
 
 async function rebuildPersona() {
-  const pid = document.getElementById('profileSelect').value;
-  if (!pid) return;
-  if (!confirm('Rebuild persona from existing Q&A answers? This will overwrite current persona.')) return;
+  const saved = localStorage.getItem('ja_persona');
+  if (!saved) return;
+  if (!confirm('Rebuild persona from saved Q&A answers? This will overwrite current persona.')) return;
+
+  const profile = loadLocalProfile();
+  if (!profile) return;
+
   const status = document.getElementById('buildStatus');
-  status.innerHTML = '<em>Rebuilding persona...</em>';
+    status.innerHTML = '<em>Rebuilding persona...</em>';
+
   try {
-    await fetchJson(`${API}/rebuild/${pid}`, { method: 'POST' });
+    const data = JSON.parse(saved);
+    const answers = [];
+    if (data.screening_answers) {
+      for (const [question, answer] of Object.entries(data.screening_answers)) {
+        answers.push({ question, answer });
+      }
+    }
+
+    if (answers.length === 0) {
+      const questionCards = document.querySelectorAll('.question-card');
+      if (questionCards.length > 0) {
+        for (let i = 0; i < questionCards.length; i++) {
+          const ta = document.getElementById(`q${i}`);
+          if (ta && ta.value.trim()) {
+            const qCard = questionCards[i];
+            const qText = qCard.querySelector('h3').textContent.replace(/^Q\d+/, '').trim();
+            answers.push({ question: qText, answer: ta.value.trim() });
+          }
+        }
+      }
+    }
+
+    if (answers.length < 3) { alert('Need at least 3 Q&A pairs to rebuild.'); return; }
+
+    const result = await fetchJson(`${PERSONA_API}/build`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: profile.full_name || 'Candidate',
+        raw_text: profile.raw_text || '',
+        skills: (profile.skills || []).map(s => typeof s === 'string' ? s : s.name),
+        experiences: (profile.experiences || []).map(e => ({
+          title: e.title, company: e.company,
+          description: e.description,
+          start_date: e.start_date, end_date: e.end_date,
+        })),
+        education: (profile.education || []).map(e => ({
+          institution: e.institution || e.school,
+          degree: e.degree, field: e.field,
+        })),
+        years_experience: profile.years_experience || 0,
+        seniority: profile.seniority || 'mid',
+        answers,
+      }),
+    });
+
+    localStorage.setItem('ja_persona', JSON.stringify(result));
     status.innerHTML = '<strong style="color:var(--accent-2)">✓ Persona rebuilt!</strong>';
     loadPersona();
   } catch (e) {
@@ -227,7 +303,8 @@ async function rebuildPersona() {
   }
 }
 
-loadProfiles();
+loadLocalProfile();
+loadPersona();
 </script>
 </body>
 </html>

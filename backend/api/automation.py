@@ -28,8 +28,9 @@ router = APIRouter(prefix="/api/automation", tags=["automation"])
 # ─── Schemas ────────────────────────────────────────────────────────────────
 
 class MatchRequest(BaseModel):
-    profile_id: str
+    profile_id: str = "local"
     job_ids: Optional[list[str]] = None
+    raw_text: str = ""
     threshold: float = 0.65
     top_k: int = 20
 
@@ -43,7 +44,8 @@ class ApplyRequest(BaseModel):
 
 
 class AnalyzeRequest(BaseModel):
-    profile_id: str
+    profile_id: str = "local"
+    raw_text: str = ""
     threshold: float = 0.60
     auto_apply: bool = False
     top_k: int = 50
@@ -70,23 +72,28 @@ async def match_jobs(
     """
     # This endpoint uses raw SQLAlchemy because it needs complex ORM operations
     # (profile reconstruction, batch application creation)
-    result = await db.execute(select(ProfileModel).where(ProfileModel.id == req.profile_id))
-    orm_profile = result.scalar_one_or_none()
-    if not orm_profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
-
     from backend.models.profile import CandidateProfile, Education, Experience, SeniorityLevel, Skill
 
-    profile = CandidateProfile(
-        full_name=orm_profile.full_name,
-        email=orm_profile.email,
-        raw_text=orm_profile.raw_text or "",
-        skills=[Skill(**s) for s in (orm_profile.skills or [])],
-        experiences=[Experience(**e) for e in (orm_profile.experiences or [])],
-        education=[Education(**e) for e in (orm_profile.education or [])],
-        years_of_experience=orm_profile.years_of_experience,
-        seniority=SeniorityLevel(orm_profile.seniority),
-        target_roles=orm_profile.target_roles or [],
+    is_local = req.profile_id == "local" or not req.profile_id
+
+    if is_local and req.raw_text:
+        profile = CandidateProfile(raw_text=req.raw_text, full_name="Local Candidate")
+    else:
+        result = await db.execute(select(ProfileModel).where(ProfileModel.id == req.profile_id))
+        orm_profile = result.scalar_one_or_none()
+        if not orm_profile:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        profile = CandidateProfile(
+            full_name=orm_profile.full_name,
+            email=orm_profile.email,
+            raw_text=orm_profile.raw_text or "",
+            skills=[Skill(**s) for s in (orm_profile.skills or [])],
+            experiences=[Experience(**e) for e in (orm_profile.experiences or [])],
+            education=[Education(**e) for e in (orm_profile.education or [])],
+            years_of_experience=orm_profile.years_of_experience,
+            seniority=SeniorityLevel(orm_profile.seniority),
+            target_roles=orm_profile.target_roles or [],
         preferred_locations=orm_profile.preferred_locations or [],
         remote_preferred=orm_profile.remote_preferred,
     )
@@ -161,26 +168,31 @@ async def analyze_profile(
     Scores each job, filters to those passing threshold (default ≥60%),
     and reports eligibility for auto-application.
     """
-    result = await db.execute(select(ProfileModel).where(ProfileModel.id == req.profile_id))
-    orm_profile = result.scalar_one_or_none()
-    if not orm_profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
-
     from backend.models.profile import CandidateProfile, Education, Experience, SeniorityLevel, Skill
 
-    profile = CandidateProfile(
-        full_name=orm_profile.full_name,
-        email=orm_profile.email,
-        raw_text=orm_profile.raw_text or "",
-        skills=[Skill(**s) for s in (orm_profile.skills or [])],
-        experiences=[Experience(**e) for e in (orm_profile.experiences or [])],
-        education=[Education(**e) for e in (orm_profile.education or [])],
-        years_of_experience=orm_profile.years_of_experience,
-        seniority=SeniorityLevel(orm_profile.seniority),
-        target_roles=orm_profile.target_roles or [],
-        preferred_locations=orm_profile.preferred_locations or [],
-        remote_preferred=orm_profile.remote_preferred,
-    )
+    is_local = req.profile_id == "local" or not req.profile_id
+
+    if is_local and req.raw_text:
+        profile = CandidateProfile(raw_text=req.raw_text, full_name="Local Candidate")
+    else:
+        result = await db.execute(select(ProfileModel).where(ProfileModel.id == req.profile_id))
+        orm_profile = result.scalar_one_or_none()
+        if not orm_profile:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        profile = CandidateProfile(
+            full_name=orm_profile.full_name,
+            email=orm_profile.email,
+            raw_text=orm_profile.raw_text or "",
+            skills=[Skill(**s) for s in (orm_profile.skills or [])],
+            experiences=[Experience(**e) for e in (orm_profile.experiences or [])],
+            education=[Education(**e) for e in (orm_profile.education or [])],
+            years_of_experience=orm_profile.years_of_experience,
+            seniority=SeniorityLevel(orm_profile.seniority),
+            target_roles=orm_profile.target_roles or [],
+            preferred_locations=orm_profile.preferred_locations or [],
+            remote_preferred=orm_profile.remote_preferred,
+        )
 
     from backend.services.analyzer import JobAnalyzer
 

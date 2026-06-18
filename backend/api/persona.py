@@ -36,6 +36,17 @@ class SubmitAnswersRequest(BaseModel):
     answers: list[AnswerItem]
 
 
+class BuildPersonaRequest(BaseModel):
+    name: str = ""
+    raw_text: str = ""
+    skills: list[str] = []
+    experiences: list[dict] = []
+    education: list[dict] = []
+    years_experience: float = 0
+    seniority: str = "mid"
+    answers: list[AnswerItem]
+
+
 class PersonaResponse(BaseModel):
     profile_id: str
     communication_style: str = "professional"
@@ -53,6 +64,53 @@ class PersonaResponse(BaseModel):
 async def get_questions():
     """Return the list of onboarding questions."""
     return QuestionsResponse(questions=get_onboarding_questions())
+
+
+@router.post("/build", response_model=PersonaResponse)
+async def build_persona_stateless(req: BuildPersonaRequest):
+    """Build persona from raw text + answers — stateless, nothing stored."""
+    from backend.models.profile import CandidateProfile, SeniorityLevel
+
+    skills_models = [{"name": s, "category": "general"} for s in req.skills]
+    exp_models = [
+        {"title": e.get("title", ""), "company": e.get("company", ""),
+         "description": e.get("description", ""), "start_date": e.get("start_date"),
+         "end_date": e.get("end_date")}
+        for e in req.experiences
+    ]
+    edu_models = [
+        {"institution": e.get("institution", ""), "degree": e.get("degree", ""),
+         "field": e.get("field", "")}
+        for e in req.education
+    ]
+
+    profile = CandidateProfile(
+        raw_text=req.raw_text,
+        full_name=req.name,
+        skills=skills_models,
+        experiences=exp_models,
+        education=edu_models,
+        years_of_experience=req.years_experience,
+        seniority=SeniorityLevel(req.seniority if req.seniority in [e.value for e in SeniorityLevel] else "unknown"),
+    )
+
+    answers_dict = {a.question: a.answer for a in req.answers}
+    persona = build_persona(profile, answers_dict)
+    if not persona:
+        raise HTTPException(
+            status_code=502,
+            detail="Persona analysis failed. Check LLM API keys are configured.",
+        )
+
+    return PersonaResponse(
+        profile_id="local",
+        communication_style=persona.communication_style,
+        key_messages=persona.key_messages,
+        tone_description=persona.tone_description,
+        voice_sample=persona.voice_sample,
+        screening_answers=persona.screening_answers,
+        onboarded=persona.onboarded,
+    )
 
 
 @router.post("/submit-answers", response_model=PersonaResponse)

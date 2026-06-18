@@ -52,10 +52,9 @@ textarea:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px
 <div class="container">
   <div class="ats-header">
     <h1>ATS Resume Checker</h1>
-    <p>Score your CV against 20+ ATS criteria — pure Python logic, zero API calls.</p>
+    <p>Score your CV against 20+ ATS criteria — runs entirely in your browser. 🔒 No data sent anywhere.</p>
   </div>
 
-  <!-- Input section -->
   <div class="card" id="inputCard">
     <div class="card-header"><h2>Input</h2></div>
     <div class="upload-body">
@@ -63,7 +62,7 @@ textarea:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px
         <label for="inputMethod">Input method</label>
         <select id="inputMethod" onchange="toggleInputMethod()">
           <option value="manual">Paste CV text manually</option>
-          <option value="profile">Use stored profile</option>
+          <option value="profile">Use parsed profile from Dashboard</option>
         </select>
       </div>
 
@@ -84,10 +83,8 @@ textarea:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px
 
       <div id="profileInput" style="display:none;">
         <div class="input-group">
-          <label for="profileSelect">Select Profile</label>
-          <select id="profileSelect">
-            <option value="">— Select a profile —</option>
-          </select>
+          <label>Stored Profile</label>
+          <div id="localProfileInfo" style="font-size:0.9rem;color:var(--text-secondary);">No profile found in browser storage. Parse a CV on the Dashboard first.</div>
         </div>
       </div>
 
@@ -101,9 +98,7 @@ textarea:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px
     </div>
   </div>
 
-  <!-- Results section -->
   <div id="results" style="display:none;">
-    <!-- Gauges -->
     <div class="card">
       <div class="card-header"><h2>ATS Score</h2></div>
       <div class="upload-body">
@@ -117,13 +112,11 @@ textarea:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px
       </div>
     </div>
 
-    <!-- Detailed criteria -->
     <div class="card">
       <div class="card-header"><h2>Criteria Breakdown</h2></div>
       <div class="upload-body" id="criteriaList"></div>
     </div>
 
-    <!-- Suggestions -->
     <div class="card">
       <div class="card-header"><h2>Suggestions</h2></div>
       <div class="upload-body" id="suggestionsList"></div>
@@ -132,29 +125,20 @@ textarea:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px
 </div>
 
 <script>
-const API = '/api/ats';
-
-async function fetchJson(url, opts = {}) {
-  const r = await fetch(url, opts);
-  if (!r.ok) { const e = await r.text(); throw new Error(e); }
-  return r.json();
-}
-
 function toggleInputMethod() {
   const method = document.getElementById('inputMethod').value;
   document.getElementById('manualInput').style.display = method === 'manual' ? 'block' : 'none';
   document.getElementById('profileInput').style.display = method === 'profile' ? 'block' : 'none';
-  if (method === 'profile') loadProfiles();
-}
-
-async function loadProfiles() {
-  try {
-    const data = await fetchJson('/api/profiles');
-    const sel = document.getElementById('profileSelect');
-    const profiles = Array.isArray(data) ? data : data?.profiles || [];
-    sel.innerHTML = '<option value="">— Select a profile —</option>' +
-      profiles.map(p => `<option value="${p.id}">${p.full_name || 'Unnamed'}</option>`).join('');
-  } catch (e) { console.error(e); }
+  if (method === 'profile') {
+    const info = document.getElementById('localProfileInfo');
+    const saved = localStorage.getItem('ja_profile');
+    if (saved) {
+      const p = JSON.parse(saved);
+      info.innerHTML = `<strong>${p.full_name || 'Candidate'}</strong> — ${(p.skills || []).length} skills, ${p.years_experience || 0} years exp.<br><small>🔒 Stored locally</small>`;
+    } else {
+      info.innerHTML = 'No profile found. Parse a CV on the Dashboard first.';
+    }
+  }
 }
 
 function scoreClass(score) {
@@ -163,7 +147,7 @@ function scoreClass(score) {
   return 'score-low';
 }
 
-async function runCheck() {
+function runCheck() {
   const status = document.getElementById('runStatus');
   status.innerHTML = '<em>Checking...</em>';
   const method = document.getElementById('inputMethod').value;
@@ -175,18 +159,14 @@ async function runCheck() {
     cvText = document.getElementById('cvText').value;
     fileExt = document.getElementById('fileFormat').value;
   } else {
-    const pid = document.getElementById('profileSelect').value;
-    if (!pid) { status.innerHTML = '<strong style="color:var(--accent-5)">Select a profile first.</strong>'; return; }
-    try {
-      const data = await fetchJson(`/api/profiles/${pid}`).catch(() => {
-        const profiles = JSON.parse(localStorage.getItem('profiles') || '[]');
-        return profiles.find(p => p.id === pid);
-      });
-      cvText = data?.raw_text || '';
-    } catch (e) {
-      status.innerHTML = `<strong style="color:var(--accent-5)">Error loading profile: ${e.message}</strong>`;
+    const saved = localStorage.getItem('ja_profile');
+    if (!saved) {
+      status.innerHTML = '<strong style="color:var(--accent-5)">No profile found in browser storage.</strong>';
       return;
     }
+    const profile = JSON.parse(saved);
+    cvText = profile.raw_text || '';
+    fileExt = '.pdf';
   }
 
   if (!cvText || cvText.trim().length < 50) {
@@ -197,52 +177,44 @@ async function runCheck() {
   const skillsInput = document.getElementById('jobSkills').value;
   const jobSkills = skillsInput ? skillsInput.split(',').map(s => s.trim()).filter(Boolean) : [];
 
-  try {
-    const result = await fetchJson(`${API}/check`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cv_text: cvText, job_skills: jobSkills, file_extension: fileExt }),
-    });
+  const result = runAtsCheck(cvText, jobSkills, fileExt);
 
-    document.getElementById('results').style.display = 'block';
-    status.innerHTML = '<strong style="color:var(--accent-2)">✓ Check complete</strong>';
+  document.getElementById('results').style.display = 'block';
+  status.innerHTML = '<strong style="color:var(--accent-2)">✓ Check complete (browser-only, no data sent)</strong>';
 
-    // Update gauges
-    const updateGauge = (id, scoreId, value, label) => {
-      const g = document.getElementById(id);
-      g.className = 'gauge ' + scoreClass(value);
-      document.getElementById(scoreId).textContent = Math.round(value);
-    };
-    updateGauge('compositeGauge', 'compositeScore', result.composite);
-    updateGauge('keywordGauge', 'keywordScore', result.keyword_match);
-    updateGauge('formatGauge', 'formatScore', result.format_score);
-    updateGauge('impactGauge', 'impactScore', result.impact_score);
-    updateGauge('completenessGauge', 'completenessScore', result.completeness_score);
+  const updateGauge = (id, scoreId, value) => {
+    document.getElementById(id).className = 'gauge ' + scoreClass(value);
+    document.getElementById(scoreId).textContent = Math.round(value);
+  };
+  updateGauge('compositeGauge', 'compositeScore', result.composite);
+  updateGauge('keywordGauge', 'keywordScore', result.keyword_match);
+  updateGauge('formatGauge', 'formatScore', result.format_score);
+  updateGauge('impactGauge', 'impactScore', result.impact_score);
+  updateGauge('completenessGauge', 'completenessScore', result.completeness_score);
 
-    // Criteria breakdown
-    const criteriaList = document.getElementById('criteriaList');
-    criteriaList.innerHTML = (result.criteria || []).map(c => `
-      <div class="criterion">
-        <span class="criterion-icon">${c.passed ? '✅' : '❌'}</span>
-        <span class="criterion-name">${c.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
-        <span class="criterion-detail">${c.detail || ''}</span>
-        <span class="criterion-score">${Math.round(c.score)}%</span>
-      </div>
-    `).join('');
+  const criteriaList = document.getElementById('criteriaList');
+  criteriaList.innerHTML = (result.criteria || []).map(c =>
+    `<div class="criterion">
+      <span class="criterion-icon">${c.passed ? '✅' : '❌'}</span>
+      <span class="criterion-name">${c.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+      <span class="criterion-detail">${c.detail || ''}</span>
+      <span class="criterion-score">${Math.round(c.score)}%</span>
+    </div>`
+  ).join('');
 
-    // Suggestions
-    const suggestionsList = document.getElementById('suggestionsList');
-    if (result.suggestions && result.suggestions.length > 0) {
-      suggestionsList.innerHTML = result.suggestions.map(s => `<div class="suggestion">${s}</div>`).join('');
-    } else {
-      suggestionsList.innerHTML = '<p>No suggestions — your CV looks great!</p>';
-    }
-
-    window.scrollTo({ top: document.getElementById('results').offsetTop - 80, behavior: 'smooth' });
-  } catch (e) {
-    status.innerHTML = `<strong style="color:var(--accent-5)">✗ Error: ${e.message}</strong>`;
+  const suggestionsList = document.getElementById('suggestionsList');
+  if (result.suggestions && result.suggestions.length > 0) {
+    suggestionsList.innerHTML = result.suggestions.map(s => `<div class="suggestion">${s}</div>`).join('');
+  } else {
+    suggestionsList.innerHTML = '<p>No suggestions — your CV looks great!</p>';
   }
+
+  window.scrollTo({ top: document.getElementById('results').offsetTop - 80, behavior: 'smooth' });
 }
+</script>
+<script type="module">
+import { runAtsCheck } from './ats-checker.js';
+window.runAtsCheck = runAtsCheck;
 </script>
 </body>
 </html>
