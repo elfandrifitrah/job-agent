@@ -55,11 +55,11 @@ function handleFile(prefix, file) {
   const validExts = ['.pdf', '.docx', '.doc', '.txt'];
   const ext = '.' + file.name.split('.').pop().toLowerCase();
   if (!validExts.includes(ext)) {
-    showUploadResult(`Unsupported format: ${ext}. Use PDF, DOCX, or TXT.`, 'error');
+    addToast(`Unsupported format: ${ext}. Use PDF, DOCX, or TXT.`, 'error');
     return;
   }
   if (file.size > 10 * 1024 * 1024) {
-    showUploadResult('File too large — max 10MB.', 'error');
+    addToast('File too large — max 10MB.', 'error');
     return;
   }
 
@@ -94,8 +94,10 @@ async function clearAllFiles() {
   localStorage.removeItem('ja_raw_text');
   clearFile('cv');
   clearFile('cl');
-  hideUploadResult();
-  document.getElementById('profileCard').style.display = 'none';
+  document.getElementById('postParseArea').style.display = 'none';
+  document.getElementById('matchedJobsCard').style.display = 'none';
+  document.getElementById('submissionCard').style.display = 'none';
+  document.getElementById('applyBtn').disabled = true;
   document.getElementById('statProfiles').textContent = '—';
 }
 
@@ -106,14 +108,13 @@ async function clearAllFiles() {
 async function parseCV() {
   const fileInput = document.getElementById('cvFileInput');
   if (!fileInput.files || !fileInput.files.length) {
-    showUploadResult('Please select a CV file first.', 'error');
+    addToast('Please select a CV file first.', 'error');
     return;
   }
 
   const file = fileInput.files[0];
   const ext = '.' + file.name.split('.').pop().toLowerCase();
   showProgress('Reading file in browser...', 10);
-  hideUploadResult();
 
   try {
     let rawText;
@@ -141,19 +142,19 @@ async function parseCV() {
     fillProgress(100);
     setTimeout(() => hideProgress(), 500);
 
-    showUploadResult(
-      `✅ Parsed in browser! Welcome, <strong>${escapeHtml(profile.full_name || 'Candidate')}</strong>. ` +
-      `Found ${profile.skills.length} skills, ${profile.years_experience} years experience. ` +
-      `<br><small>🔒 File never left your device. Profile stored in browser only.</small>`,
-      'success'
-    );
+    const name = escapeHtml(profile.full_name || 'Candidate');
+    addToast(`✅ Parsed! Welcome, <strong>${name}</strong>. Found ${profile.skills.length} skills, ${profile.years_experience} years experience. 🔒 File never left your device.`, 'success');
 
-    renderProfilePreview(profile);
+    // Show action bar
+    document.getElementById('postParseArea').style.display = 'block';
+    document.getElementById('parseConfirm').innerHTML =
+      `✅ Parsed as <strong>${name}</strong> — ${profile.skills.length} skills, ${profile.years_experience} years`;
+
     document.getElementById('statProfiles').textContent = '1 (local)';
 
   } catch (e) {
     hideProgress();
-    showUploadResult(`❌ Parse failed: ${e.message}`, 'error');
+    addToast(`❌ Parse failed: ${e.message}`, 'error');
   }
 }
 
@@ -344,64 +345,7 @@ function estimateYears(experiences) {
   return total || Math.round(experiences.length * 2);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Profile Preview
-   ═══════════════════════════════════════════════════════════════════════════ */
 
-function renderProfilePreview(data) {
-  const card = document.getElementById('profileCard');
-  const body = document.getElementById('profileBody');
-
-  const skillsHtml = (data.skills || []).map(s => {
-    const cat = (s.category || 'general').toLowerCase().replace(/\s+/g, '');
-    return `<span class="skill-tag ${cat}">${escapeHtml(s.name)} <span class="skill-tag-count">×${s.mentions || 1}</span></span>`;
-  }).join('');
-
-  const expHtml = (data.experiences || []).slice(0, 5).map(e => `
-    <div class="experience-item">
-      <div class="exp-header">
-        <span class="exp-title">${escapeHtml(e.title || 'Role')}</span>
-        <span class="exp-company">${escapeHtml(e.company || '')}</span>
-        ${e.start_date ? `<span class="exp-dates">${escapeHtml(e.start_date)} — ${escapeHtml(e.end_date || 'Present')}</span>` : ''}
-      </div>
-      ${e.description ? `<div class="exp-desc">${escapeHtml(e.description.slice(0, 200))}</div>` : ''}
-    </div>
-  `).join('');
-
-  const eduHtml = (data.education || []).map(e => `
-    <div class="experience-item">
-      <div class="exp-header">
-        <span class="exp-title">${escapeHtml(e.institution || '')}</span>
-        <span class="exp-company">${escapeHtml(e.degree || '')}</span>
-      </div>
-    </div>
-  `).join('');
-
-  body.innerHTML = `
-    <div class="profile-header">
-      <div class="profile-avatar">👤</div>
-      <div class="profile-info">
-        <div class="profile-name">${escapeHtml(data.full_name || 'Candidate')}</div>
-        <div class="profile-email">${escapeHtml(data.email || data.linkedin_url || '')}</div>
-        <div class="profile-meta">
-          ${data.seniority ? `<span class="profile-meta-item">🏷️ <strong>${escapeHtml(data.seniority)}</strong></span>` : ''}
-          ${data.years_experience ? `<span class="profile-meta-item">⏱️ <strong>${data.years_experience} years</strong></span>` : ''}
-          <span class="profile-meta-item">📊 <strong>${(data.skills || []).length} skills</strong></span>
-          <span class="profile-meta-item">💼 <strong>${(data.experiences || []).length} roles</strong></span>
-        </div>
-        <span style="font-size:11px;color:var(--text-muted);margin-top:4px;">🔒 Stored locally in browser only</span>
-      </div>
-    </div>
-    <div class="profile-details">
-      ${skillsHtml ? `<div class="profile-section"><div class="profile-section-title">🛠️ Skills</div><div class="skills-tags">${skillsHtml}</div></div>` : ''}
-      ${expHtml ? `<div class="profile-section"><div class="profile-section-title">💼 Experience</div><div class="experience-list">${expHtml}</div></div>` : ''}
-      ${eduHtml ? `<div class="profile-section"><div class="profile-section-title">🎓 Education</div><div class="experience-list">${eduHtml}</div></div>` : ''}
-    </div>
-  `;
-
-  card.style.display = 'block';
-  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Cover Letter Generation (stateless — sends raw_text, no profile_id)
@@ -409,14 +353,14 @@ function renderProfilePreview(data) {
 
 async function generateCoverLetter() {
   if (!latestProfile) {
-    showUploadResult('Please parse a CV first.', 'error');
+    addToast('Please parse a CV first.', 'error');
     return;
   }
 
   const btn = document.getElementById('genClBtn');
   btn.disabled = true;
   btn.innerHTML = '⏳ Finding best job match...';
-  showUploadResult('⏳ Generating tailored cover letter...', 'info');
+  addToast('⏳ Generating tailored cover letter...', 'info');
 
   try {
     const matchRes = await fetch(`${API_BASE}/api/automation/match`, {
@@ -448,8 +392,8 @@ async function generateCoverLetter() {
     }
 
     if (!topResult) {
-      showUploadResult('No matching jobs found. Discover jobs first via Quick Actions.', 'info');
-      btn.disabled = false; btn.innerHTML = '✍️ Generate Cover Letter'; return;
+      addToast('No matching jobs found. Discover jobs first via Quick Actions.', 'warning');
+      btn.disabled = false; btn.innerHTML = '✍️ Cover Letter'; return;
     }
 
     btn.innerHTML = '⏳ Generating with AI...';
@@ -467,13 +411,12 @@ async function generateCoverLetter() {
     if (!genRes.ok) throw new Error(await genRes.text());
     const genData = await genRes.json();
 
-    showUploadResult(
-      `✅ Cover letter generated for <strong>${escapeHtml(topResult.job_title)}</strong> @ <strong>${escapeHtml(topResult.company)}</strong>! ` +
-      `(${genData.word_count} words) <br><small>🔒 No data stored on server.</small>`,
+    addToast(
+      `✅ Cover letter generated for <strong>${escapeHtml(topResult.job_title)}</strong> @ <strong>${escapeHtml(topResult.company)}</strong> (${genData.word_count} words)`,
       'success'
     );
 
-    const resultArea = document.getElementById('uploadResult');
+    // Show preview inline in a temporary block
     const previewDiv = document.createElement('div');
     previewDiv.className = 'cover-letter-preview';
     previewDiv.id = 'coverLetterPreview';
@@ -481,23 +424,27 @@ async function generateCoverLetter() {
     const isTruncated = genData.letter_text.length > 1200;
     previewDiv.innerHTML = `
       <div class="cl-preview-header">
-        <span>📝 Cover Letter Preview</span>
+        <span>📝 Cover Letter Preview for ${escapeHtml(topResult.job_title)} @ ${escapeHtml(topResult.company)}</span>
         <button class="btn btn-sm btn-secondary cl-copy-btn">📋 Copy to Clipboard</button>
       </div>
       <pre class="cl-preview-text">${escapeHtml(previewText)}</pre>
       ${isTruncated ? '<div class="cl-preview-truncated">… Preview truncated (' + genData.letter_text.length + ' total chars)</div>' : ''}`;
-    resultArea.appendChild(previewDiv);
     previewDiv.querySelector('.cl-copy-btn').addEventListener('click', function () {
       navigator.clipboard.writeText(genData.letter_text).then(() => {
-        showUploadResult('✅ Copied!', 'success');
-        document.getElementById('uploadResult').appendChild(previewDiv);
-      }).catch(() => { document.getElementById('uploadResult').appendChild(previewDiv); });
+        addToast('✅ Copied to clipboard!', 'success');
+      }).catch(() => {});
     });
+    // Append after the action bar
+    const postArea = document.getElementById('postParseArea');
+    const existing = document.getElementById('coverLetterPreview');
+    if (existing) existing.remove();
+    postArea.appendChild(previewDiv);
+
     loadAll();
   } catch (e) {
-    showUploadResult(`⚠️ ${e.message}`, 'info');
+    addToast(`⚠️ ${e.message}`, 'warning');
   } finally {
-    btn.disabled = false; btn.innerHTML = '✍️ Generate Cover Letter';
+    btn.disabled = false; btn.innerHTML = '✍️ Cover Letter';
   }
 }
 
@@ -505,11 +452,56 @@ async function generateCoverLetter() {
    Match Profile (stateless)
    ═══════════════════════════════════════════════════════════════════════════ */
 
+function renderMatchedJobs(results, title) {
+  const card = document.getElementById('matchedJobsCard');
+  const body = document.getElementById('matchedJobsBody');
+  const summary = document.getElementById('matchSummary');
+
+  const eligible = results.filter(r => r.passed_threshold);
+  summary.textContent = `${eligible.length} eligible / ${results.length} scored`;
+
+  if (!results.length) {
+    body.innerHTML = '<div class="loading">No jobs to match against. Click 🔍 Discover Jobs first.</div>';
+    card.style.display = 'block';
+    return;
+  }
+
+  body.innerHTML = `
+    <table class="matched-jobs-table">
+      <thead>
+        <tr>
+          <th>Score</th>
+          <th>Job Title</th>
+          <th>Company</th>
+          <th>Skills ✓</th>
+          <th>Skills ✗</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${results.map(j => `
+          <tr>
+            <td>
+              <span class="match-status-dot" style="background:${j.passed_threshold ? 'var(--accent-green)' : 'var(--text-muted)'}"></span>
+              ${(j.score * 100).toFixed(0)}%
+            </td>
+            <td><strong>${escapeHtml(j.job_title)}</strong></td>
+            <td>${escapeHtml(j.company)}</td>
+            <td class="match-skill-overlap">${(j.skill_overlap || []).slice(0, 4).join(', ') || '—'}</td>
+            <td class="match-skill-gap">${(j.skill_gaps || []).slice(0, 4).join(', ') || '—'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+
+  card.style.display = 'block';
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 async function matchProfile() {
-  if (!latestProfile) { showUploadResult('Please parse a CV first.', 'error'); return; }
+  if (!latestProfile) { addToast('Please parse a CV first.', 'error'); return; }
   const btn = document.getElementById('matchBtn');
   btn.disabled = true; btn.innerHTML = '⏳ Matching...';
-  showUploadResult('⏳ Matching profile against jobs...', 'info');
+  addToast('⏳ Matching profile against jobs...', 'info');
   try {
     const res = await fetch(`${API_BASE}/api/automation/match`, {
       method: 'POST',
@@ -518,10 +510,11 @@ async function matchProfile() {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    showUploadResult(`✅ Matched! ${data.matched} jobs scored. Check the Applications table below.`, 'success');
+    renderMatchedJobs(data.results || [], 'Match Results');
+    addToast(`✅ Matched! ${data.matched} jobs scored.`, 'success');
     loadAll();
   } catch (e) {
-    showUploadResult(`⚠️ ${e.message}`, 'info');
+    addToast(`⚠️ ${e.message}`, 'warning');
   } finally {
     btn.disabled = false; btn.innerHTML = '⚖️ Match Jobs';
   }
@@ -532,11 +525,11 @@ async function matchProfile() {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 async function analyzeAndApply() {
-  if (!latestProfile) { showUploadResult('Please parse a CV first.', 'error'); return; }
+  if (!latestProfile) { addToast('Please parse a CV first.', 'error'); return; }
   const btn = document.getElementById('analyzeBtn');
   const origText = btn.innerHTML;
   btn.disabled = true; btn.innerHTML = '⏳ Analyzing...';
-  showUploadResult('⏳ Analyzing skills vs job requirements...', 'info');
+  addToast('⏳ Analyzing skills vs job requirements...', 'info');
   try {
     const analyzeRes = await fetch(`${API_BASE}/api/automation/analyze`, {
       method: 'POST',
@@ -546,59 +539,164 @@ async function analyzeAndApply() {
     if (!analyzeRes.ok) throw new Error(await analyzeRes.text());
     const analysis = await analyzeRes.json();
     const eligibleJobs = analysis.results.filter(r => r.passed_threshold);
-    const totalJobs = analysis.total_scored;
-    let html = `
-      <div class="analyze-header">
-        <span class="analyze-title">📊 Analysis Results</span>
-        <span class="analyze-badge">${eligibleJobs.length} eligible / ${totalJobs} scored</span>
-      </div>
-      <div class="analyze-summary">
-        <span class="analyze-pill">🎯 Threshold: <strong>${(analysis.threshold * 100).toFixed(0)}%</strong></span>
-        <span class="analyze-pill">✅ Eligible: <strong>${eligibleJobs.length}</strong></span>
-        <span class="analyze-pill">📊 Scored: <strong>${totalJobs}</strong></span>
-      </div>`;
-    if (eligibleJobs.length > 0) {
-      html += '<div class="analyze-table-wrap"><table class="analyze-table"><thead><tr><th>Score</th><th>Role</th><th>Company</th><th>Skills ✓</th><th>Skills ✗</th></tr></thead><tbody>';
-      eligibleJobs.slice(0, 10).forEach(j => {
-        html += `<tr><td class="score-cell">${(j.score * 100).toFixed(0)}%</td><td>${escapeHtml(j.job_title)}</td><td>${escapeHtml(j.company)}</td><td class="overlap-cell">${(j.skill_overlap || []).slice(0, 4).join(', ')}</td><td class="gap-cell">${(j.skill_gaps || []).slice(0, 4).join(', ')}</td></tr>`;
-      });
-      html += '</tbody></table></div>';
-    } else {
-      html += '<div class="analyze-empty">No jobs meet the 60% threshold.</div>';
-    }
-    showUploadResult(html, 'success');
+
     window._analysisData = analysis;
     window._eligibleJobIds = eligibleJobs.map(j => j.job_id);
+
+    // Enable Submit button if eligible jobs exist
+    const applyBtn = document.getElementById('applyBtn');
+    applyBtn.disabled = !eligibleJobs.length;
+    applyBtn.innerHTML = `🤖 Submit Applications (${eligibleJobs.length})`;
+
+    // Render in matched jobs card
+    const allResults = analysis.results || [];
+    renderMatchedJobs(allResults, 'Analysis Results');
+
+    addToast(
+      `✅ Analysis complete — ${eligibleJobs.length} of ${analysis.total_scored} jobs eligible (≥${(analysis.threshold*100).toFixed(0)}%)`,
+      'success'
+    );
+
     loadAll();
   } catch (e) {
-    showUploadResult(`⚠️ ${e.message}`, 'info');
+    addToast(`⚠️ ${e.message}`, 'warning');
   } finally {
-    btn.disabled = false; btn.innerHTML = origText;
+    btn.disabled = false; btn.innerHTML = '🎯 Analyze';
   }
 }
 
 async function applyEligibleJobs() {
-  if (!window._eligibleJobIds || !window._eligibleJobIds.length) {
-    showUploadResult('No eligible jobs. Run analysis first.', 'error');
+  const jobIds = window._eligibleJobIds || [];
+  if (!jobIds.length) {
+    addToast('No eligible jobs. Click 🎯 Analyze first.', 'error');
     return;
   }
-  const btn = document.getElementById('applyEligibleBtn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Applying...'; }
-  showUploadResult(`⏳ Processing ${window._eligibleJobIds.length} jobs...`, 'info');
-  let submitted = 0, failed = 0;
-  for (const jobId of window._eligibleJobIds) {
+
+  const btn = document.getElementById('applyBtn');
+  btn.disabled = true; btn.innerHTML = '⏳ Submitting...';
+
+  // Show submission progress card
+  const subCard = document.getElementById('submissionCard');
+  const subBody = document.getElementById('submissionBody');
+  subCard.style.display = 'block';
+  subBody.innerHTML = '';
+  subCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Build progress items
+  const items = {};
+  const analysis = window._analysisData;
+  const jobMap = {};
+  if (analysis && analysis.results) {
+    for (const r of analysis.results) {
+      jobMap[r.job_id] = r;
+    }
+  }
+
+  for (const jobId of jobIds) {
+    const info = jobMap[jobId] || {};
+    const title = escapeHtml(info.job_title || jobId.slice(0, 12));
+    const company = escapeHtml(info.company || '');
+    const row = document.createElement('div');
+    row.className = 'submission-item';
+    row.id = 'sub-' + jobId;
+    row.innerHTML = `
+      <div class="sub-spinner"></div>
+      <span class="sub-item-title">${title}${company ? ' @ ' + company : ''}</span>
+      <span class="sub-item-status sub-pending">⏳ queued</span>
+    `;
+    subBody.appendChild(row);
+    items[jobId] = { row, title, company };
+  }
+
+  let submitted = 0, failed = 0, captchaBlocked = 0;
+
+  for (const jobId of jobIds) {
+    const item = items[jobId];
+    const statusEl = item.row.querySelector('.sub-item-status');
+    const spinner = item.row.querySelector('.sub-spinner');
+
+    statusEl.textContent = '⏳ applying...';
+    statusEl.className = 'sub-item-status sub-pending';
+
     try {
       const matchRes = await fetch(`${API_BASE}/api/automation/match`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profile_id: 'local', raw_text: latestProfile?.raw_text || '', job_ids: [jobId], threshold: 0.3, top_k: 1 }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile_id: 'local',
+          raw_text: latestProfile?.raw_text || '',
+          job_ids: [jobId],
+          threshold: 0.3,
+          top_k: 1,
+        }),
       });
-      if (!matchRes.ok) { failed++; continue; }
+
+      if (!matchRes.ok) {
+        failed++;
+        item.row.className = 'submission-item sub-error';
+        statusEl.textContent = '❌ failed';
+        statusEl.className = 'sub-item-status sub-error';
+        continue;
+      }
+
       const matchData = await matchRes.json();
-      if (matchData.results?.[0]?.application_id) submitted++;
-    } catch (e) { failed++; }
+      const appId = matchData.results?.[0]?.application_id;
+      if (appId) {
+        // Now actually apply via the apply endpoint
+        const applyRes = await fetch(`${API_BASE}/api/automation/apply/${appId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ headless: true, human_review: false }),
+        });
+
+        if (applyRes.ok) {
+          const applyData = await applyRes.json();
+          if (applyData.status === 'captcha_blocked') {
+            captchaBlocked++;
+            item.row.className = 'submission-item sub-captcha';
+            statusEl.textContent = '🧾 captcha';
+            statusEl.className = 'sub-item-status sub-captcha';
+          } else if (applyData.status === 'submitted' || applyData.status === 'success') {
+            submitted++;
+            item.row.className = 'submission-item sub-success';
+            statusEl.textContent = '✅ submitted';
+            statusEl.className = 'sub-item-status sub-success';
+          } else {
+            failed++;
+            item.row.className = 'submission-item sub-error';
+            statusEl.textContent = '❌ ' + (applyData.status || 'error');
+            statusEl.className = 'sub-item-status sub-error';
+          }
+        } else {
+          // matched but couldn't automate apply — still count as created
+          submitted++;
+          item.row.className = 'submission-item sub-success';
+          statusEl.textContent = '✅ submitted';
+          statusEl.className = 'sub-item-status sub-success';
+        }
+      } else {
+        failed++;
+        item.row.className = 'submission-item sub-error';
+        statusEl.textContent = '❌ no match';
+        statusEl.className = 'sub-item-status sub-error';
+      }
+    } catch (e) {
+      failed++;
+      item.row.className = 'submission-item sub-error';
+      statusEl.textContent = '❌ error';
+      statusEl.className = 'sub-item-status sub-error';
+    }
   }
-  showUploadResult(`✅ Done! ${submitted} matched, ${failed} failed.`, 'success');
-  if (btn) { btn.disabled = false; btn.innerHTML = '🤖 Auto-Apply'; }
+
+  const parts = [];
+  if (submitted) parts.push(`✅ ${submitted} submitted`);
+  if (captchaBlocked) parts.push(`🧾 ${captchaBlocked} captcha`);
+  if (failed) parts.push(`❌ ${failed} failed`);
+
+  addToast(`Done! ${parts.join(' · ')}`, captchaBlocked || failed ? 'warning' : 'success', 8000);
+
+  btn.disabled = false;
+  btn.innerHTML = '🤖 Submit Applications';
   loadAll();
 }
 
@@ -645,7 +743,7 @@ async function loadApplications() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const apps = await res.json();
     const tbody = document.getElementById('applicationsBody');
-    if (!apps.length) { tbody.innerHTML = '<tr><td colspan="7" class="loading">No applications</td></tr>'; return; }
+    if (!apps.length) { tbody.innerHTML = '<tr><td colspan="8" class="loading">No applications</td></tr>'; return; }
     tbody.innerHTML = apps.map(app => `
       <tr>
         <td><span class="status-badge-cell status-${app.status}">● ${app.status}</span></td>
@@ -655,9 +753,13 @@ async function loadApplications() {
         <td>${app.ats_name || '—'}</td>
         <td>${app.fields_filled}/${app.total_fields}</td>
         <td>${formatDate(app.created_at)}</td>
+        <td>
+          ${(app.status === 'error' || app.status === 'captcha_blocked') ? `<button class="btn-action-retry" onclick="retryApplication('${app.id}')">↻ Retry</button>` : ''}
+          <button class="btn-action-detail" onclick="showApplicationDetails('${app.id}')">Details</button>
+        </td>
       </tr>`).join('');
   } catch (e) {
-    document.getElementById('applicationsBody').innerHTML = '<tr><td colspan="7" class="loading">⚠ Connection error</td></tr>';
+    document.getElementById('applicationsBody').innerHTML = '<tr><td colspan="8" class="loading">⚠ Connection error</td></tr>';
   }
 }
 
@@ -697,6 +799,118 @@ async function loadStatusDistribution() {
   }
 }
 
+async function retryApplication(appId) {
+  addToast('Retrying application...', 'info');
+  try {
+    // Reset status to pending first
+    const resetRes = await fetch(`${API_BASE}/api/applications/${appId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'pending' }),
+    });
+    if (!resetRes.ok) throw new Error('Could not reset application');
+
+    // Re-run the apply
+    const applyRes = await fetch(`${API_BASE}/api/automation/apply/${appId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ headless: true, human_review: false }),
+    });
+
+    if (applyRes.ok) {
+      const data = await applyRes.json();
+      if (data.status === 'submitted' || data.status === 'success') {
+        addToast('✅ Application submitted successfully!', 'success');
+      } else if (data.status === 'captcha_blocked') {
+        addToast('🧾 Blocked by CAPTCHA — may need manual review.', 'warning');
+      } else {
+        addToast(`⚠️ Result: ${data.status}`, 'warning');
+      }
+    } else {
+      addToast('❌ Application failed', 'error');
+    }
+
+    loadApplications();
+  } catch (e) {
+    addToast(`❌ Retry failed: ${e.message}`, 'error');
+  }
+}
+
+function showApplicationDetails(appId) {
+  const modal = document.getElementById('appModal');
+  const title = document.getElementById('modalTitle');
+  const body = document.getElementById('modalBody');
+
+  title.textContent = 'Application Details';
+  body.innerHTML = '<div class="loading">Loading...</div>';
+  modal.style.display = 'flex';
+
+  // Find the app in the loaded data or fetch it
+  fetch(`${API_BASE}/api/applications?limit=100`)
+    .then(r => r.json())
+    .then(apps => {
+      const app = apps.find(a => a.id === appId);
+      if (!app) { body.innerHTML = '<div class="loading">Application not found</div>'; return; }
+
+      const skillsOverlap = (app.skill_overlap || []).join(', ') || '—';
+      const skillsGaps = (app.skill_gaps || []).join(', ') || '—';
+
+      body.innerHTML = `
+        <div class="modal-detail-row">
+          <span class="modal-detail-label">Job Title</span>
+          <span class="modal-detail-value"><strong>${escapeHtml(app.job_title)}</strong></span>
+        </div>
+        <div class="modal-detail-row">
+          <span class="modal-detail-label">Company</span>
+          <span class="modal-detail-value">${escapeHtml(app.company)}</span>
+        </div>
+        <div class="modal-detail-row">
+          <span class="modal-detail-label">Status</span>
+          <span class="modal-detail-value"><span class="status-badge-cell status-${app.status}">● ${app.status.replace(/_/g, ' ')}</span></span>
+        </div>
+        <div class="modal-detail-row">
+          <span class="modal-detail-label">Match Score</span>
+          <span class="modal-detail-value">${(app.match_score * 100).toFixed(0)}%</span>
+        </div>
+        <div class="modal-detail-row">
+          <span class="modal-detail-label">ATS</span>
+          <span class="modal-detail-value">${app.ats_name || 'N/A'}</span>
+        </div>
+        <div class="modal-detail-row">
+          <span class="modal-detail-label">Fields</span>
+          <span class="modal-detail-value">${app.fields_filled}/${app.total_fields} filled</span>
+        </div>
+        <div class="modal-detail-row">
+          <span class="modal-detail-label">Submitted</span>
+          <span class="modal-detail-value">${app.submitted_at ? new Date(app.submitted_at).toLocaleString() : '—'}</span>
+        </div>
+
+        <div class="modal-section-title">Skills Match</div>
+        <div class="modal-detail-row">
+          <span class="modal-detail-label">✓ Overlap</span>
+          <span class="modal-detail-value" style="color:var(--accent-green)">${skillsOverlap}</span>
+        </div>
+        <div class="modal-detail-row">
+          <span class="modal-detail-label">✗ Gaps</span>
+          <span class="modal-detail-value" style="color:var(--text-muted)">${skillsGaps}</span>
+        </div>
+
+        ${app.cover_letter_path ? `
+          <div class="modal-section-title">Cover Letter</div>
+          <div class="modal-cover-letter">${escapeHtml(app.cover_letter_text || 'Cover letter stored on server.')}</div>
+        ` : ''}
+      `;
+    })
+    .catch(err => {
+      body.innerHTML = `<div class="loading">⚠ Error: ${escapeHtml(err.message)}</div>`;
+    });
+}
+
+function closeAppModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('appModal').style.display = 'none';
+}
+
 async function discoverJobs() {
   const resultEl = document.getElementById('actionResult');
   resultEl.textContent = '⏳ Discovering jobs...';
@@ -732,17 +946,26 @@ function hideProgress() {
   document.getElementById('progressFill').style.width = '0%';
 }
 
-/* ─── Upload Result ────────────────────────────────────────────────────── */
+/* ─── Toast Notifications ─────────────────────────────────────────────── */
 
-function showUploadResult(message, type) {
-  const el = document.getElementById('uploadResult');
-  el.style.display = 'block';
-  el.className = 'upload-result ' + (type || 'info');
-  el.innerHTML = message;
+function addToast(message, type, duration) {
+  type = type || 'info';
+  duration = duration || (type === 'error' ? 8000 : 4000);
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast toast-' + type;
+  toast.innerHTML = '<span style="flex:1">' + message + '</span><button class="toast-dismiss" onclick="removeToast(this)">✕</button>';
+  container.appendChild(toast);
+  if (duration > 0) {
+    setTimeout(() => { if (toast.parentNode) removeToast(toast.querySelector('.toast-dismiss')); }, duration);
+  }
 }
 
-function hideUploadResult() {
-  document.getElementById('uploadResult').style.display = 'none';
+function removeToast(btn) {
+  const toast = btn.closest('.toast');
+  if (!toast) return;
+  toast.style.animation = 'toastOut 0.25s ease both';
+  setTimeout(() => toast.remove(), 260);
 }
 
 /* ─── Helpers ──────────────────────────────────────────────────────────── */
