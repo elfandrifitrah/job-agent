@@ -119,8 +119,13 @@ async function parseCV() {
   try {
     let rawText;
     if (ext === '.pdf') {
-      rawText = await parsePDF(file);
+      // Show initial progress before PDF load
+      fillProgress(15);
+      rawText = await parsePDF(file, (pct) => {
+        fillProgress(10 + Math.round(pct * 0.35));
+      });
     } else if (ext === '.docx' || ext === '.doc') {
+      fillProgress(20);
       rawText = await parseDOCX(file);
     } else {
       rawText = await parseTXT(file);
@@ -133,6 +138,8 @@ async function parseCV() {
     }
 
     localStorage.setItem('ja_raw_text', rawText);
+
+    fillProgress(65);
 
     const profile = extractProfile(rawText, file.name);
     latestProfile = profile;
@@ -158,14 +165,19 @@ async function parseCV() {
   }
 }
 
-async function parsePDF(file) {
+async function parsePDF(file, onProgress) {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const total = Math.min(pdf.numPages, 20);
   let text = '';
-  for (let i = 1; i <= Math.min(pdf.numPages, 20); i++) {
+  for (let i = 1; i <= total; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
     text += content.items.map(item => item.str).join(' ') + '\n';
+    if (onProgress) {
+      onProgress(i / total);
+      if (i % 2 === 0) await new Promise(r => setTimeout(r, 0));
+    }
   }
   return text;
 }
