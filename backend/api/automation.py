@@ -49,14 +49,6 @@ class AnalyzeRequest(BaseModel):
     top_k: int = 50
 
 
-class BatchApplyRequest(BaseModel):
-    profile_id: str
-    job_ids: list[str]
-    cover_letter_path: Optional[str] = None
-    headless: bool = True
-    human_review: bool = True
-
-
 # ─── Helpers ────────────────────────────────────────────────────────────────
 
 def _dict_to_job_posting(d: dict) -> JobPosting:
