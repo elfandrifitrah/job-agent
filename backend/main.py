@@ -27,6 +27,11 @@ from backend.database import init_db
 
 logger = logging.getLogger(__name__)
 
+# Configure timing middleware logger so slow-request warnings appear
+logging.getLogger("backend.middleware.timing").setLevel(logging.INFO)
+if not logging.getLogger("backend.middleware.timing").handlers:
+    logging.getLogger("backend.middleware.timing").addHandler(logging.StreamHandler())
+
 DASHBOARD_DIR = Path(__file__).parent.parent / "dashboard"
 
 
@@ -100,6 +105,9 @@ app.add_middleware(
     window_seconds=60,
     paths=["/api/automation", "/api/live-jobs"],
 )
+
+from backend.middleware.timing import TimingMiddleware
+app.add_middleware(TimingMiddleware)
 
 
 # ─── API Routers ────────────────────────────────────────────────────────────
