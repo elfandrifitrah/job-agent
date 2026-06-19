@@ -93,6 +93,14 @@ app.add_middleware(
 from backend.middleware.auth import setup_auth_middleware
 setup_auth_middleware(app)
 
+from backend.middleware.rate_limit import RateLimitMiddleware
+app.add_middleware(
+    RateLimitMiddleware,
+    max_requests=30,
+    window_seconds=60,
+    paths=["/api/automation", "/api/live-jobs"],
+)
+
 
 # ─── API Routers ────────────────────────────────────────────────────────────
 
