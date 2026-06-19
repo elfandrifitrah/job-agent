@@ -32,10 +32,17 @@ DASHBOARD_DIR = Path(__file__).parent.parent / "dashboard"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup: init DB connection. Shutdown: cleanup."""
+    """Startup: init DB connection, seed sample data. Shutdown: cleanup."""
     logger.info("Starting Job Agent API...")
     await init_db()
     logger.info("Database initialized")
+
+    # Seed sample live jobs if cache is empty (so dashboard never starts blank)
+    try:
+        from backend.api.live_jobs import seed_sample_listings_if_empty
+        await seed_sample_listings_if_empty()
+    except Exception as e:
+        logger.warning("Failed to seed sample live jobs: %s", e)
 
     # Start the live jobs scheduler (daily PM job refresh)
     from backend.tasks.live_jobs_scheduler import start_scheduler

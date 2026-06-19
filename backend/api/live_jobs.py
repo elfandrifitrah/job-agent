@@ -3,12 +3,15 @@ API router for live Product Manager job listings.
 Multi-source: fetches from Jobicy (free, no key) + Adzuna (free tier, needs API key).
 Stores results, deduplicates, and tracks source breakdown.
 Runs on-demand via API or daily via APScheduler.
+
+Falls back to sample seed data when no real jobs are available.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import random
 from datetime import UTC, datetime, timedelta
 from typing import Any, Optional
 
@@ -22,6 +25,21 @@ from backend.storage.deps import get_backend
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/live-jobs", tags=["live-jobs"])
+
+SAMPLE_PM_JOBS = [
+    {"id":"sample_001","title":"Senior Product Manager","company":"Google","location":"Mountain View, CA (Remote)","description":"Drive product strategy for Google Cloud Platform. Define roadmap, gather requirements, and work with engineering to deliver features that serve millions of users worldwide.","url":"https://careers.google.com/jobs/results/","source":"sample","salary_range":"$180K-$250K","remote":True,"posted_date":(datetime.now(UTC)-timedelta(hours=random.randint(1,48))).isoformat(),"seniority":"senior","skills_required":["Product Management","Cloud Computing","Agile","Data Analysis","Stakeholder Management","A/B Testing","Strategy"]},
+    {"id":"sample_002","title":"Product Manager — Payments","company":"Stripe","location":"San Francisco, CA (Remote)","description":"Own the payments platform product roadmap. Work with merchants and financial partners to build the next generation of online payment infrastructure.","url":"https://stripe.com/jobs","source":"sample","salary_range":"$170K-$230K","remote":True,"posted_date":(datetime.now(UTC)-timedelta(hours=random.randint(1,48))).isoformat(),"seniority":"senior","skills_required":["Product Management","Payments","Fintech","API Design","User Research","SQL"]},
+    {"id":"sample_003","title":"Product Manager","company":"Microsoft","location":"Redmond, WA (Remote)","description":"Lead product development for Microsoft Teams. Define features, prioritize backlog, analyze usage data, and ship experiences that empower hybrid work.","url":"https://careers.microsoft.com/","source":"sample","salary_range":"$150K-$210K","remote":True,"posted_date":(datetime.now(UTC)-timedelta(hours=random.randint(1,48))).isoformat(),"seniority":"senior","skills_required":["Product Management","SaaS","User Analytics","Agile","Communication","Roadmapping"]},
+    {"id":"sample_004","title":"Associate Product Manager","company":"Airbnb","location":"San Francisco, CA (Hybrid)","description":"Join Airbnb's APM program. Rotate across teams working on search, payments, trust & safety, and host tools. 2-year rotational program with mentorship.","url":"https://careers.airbnb.com/","source":"sample","salary_range":"$120K-$150K","remote":False,"posted_date":(datetime.now(UTC)-timedelta(hours=random.randint(1,48))).isoformat(),"seniority":"mid","skills_required":["Product Management","User Research","Data Analysis","Prototyping","Cross-functional Collaboration"]},
+    {"id":"sample_005","title":"Senior Product Manager — AI/ML","company":"Anthropic","location":"San Francisco, CA","description":"Define product direction for Claude AI platform. Work alongside ML researchers to translate cutting-edge AI capabilities into intuitive product experiences.","url":"https://www.anthropic.com/careers","source":"sample","salary_range":"$200K-$300K","remote":True,"posted_date":(datetime.now(UTC)-timedelta(hours=random.randint(1,48))).isoformat(),"seniority":"senior","skills_required":["Product Management","Machine Learning","AI","API Design","Technical Communication","Strategy"]},
+    {"id":"sample_006","title":"Product Manager — Developer Platform","company":"Vercel","location":"Remote (Global)","description":"Own the developer experience for Vercel's deployment platform. Define product specs, work with open-source communities, and ship features that make web development faster.","url":"https://vercel.com/careers","source":"sample","salary_range":"$160K-$220K","remote":True,"posted_date":(datetime.now(UTC)-timedelta(hours=random.randint(1,48))).isoformat(),"seniority":"senior","skills_required":["Product Management","Developer Tools","Web Technologies","API Design","DX","Analytics"]},
+    {"id":"sample_007","title":"Product Manager — Growth","company":"Notion","location":"New York, NY (Hybrid)","description":"Drive user acquisition, activation, and retention for Notion. Run experiments, analyze funnels, and build features that turn casual users into power users.","url":"https://www.notion.so/careers","source":"sample","salary_range":"$155K-$215K","remote":False,"posted_date":(datetime.now(UTC)-timedelta(hours=random.randint(1,48))).isoformat(),"seniority":"mid","skills_required":["Product Management","Growth","Experimentation","Data Analysis","SQL","User Psychology"]},
+    {"id":"sample_008","title":"Director of Product — Fintech","company":"Revolut","location":"London, UK (Remote)","description":"Lead the fintech product team. Define the long-term product vision for Revolut's banking and investment products across European and Asian markets.","url":"https://www.revolut.com/careers","source":"sample","salary_range":"$190K-$280K","remote":True,"posted_date":(datetime.now(UTC)-timedelta(hours=random.randint(1,48))).isoformat(),"seniority":"executive","skills_required":["Product Leadership","Fintech","Strategy","Team Management","Regulatory Knowledge","P&L Management"]},
+    {"id":"sample_009","title":"Product Manager — Marketplace","company":"DoorDash","location":"San Francisco, CA","description":"Own the Dasher experience product area. Build tools that help delivery partners earn more, work flexibly, and feel supported.","url":"https://careers.doordash.com/","source":"sample","salary_range":"$145K-$200K","remote":True,"posted_date":(datetime.now(UTC)-timedelta(hours=random.randint(1,48))).isoformat(),"seniority":"mid","skills_required":["Product Management","Marketplace","Logistics","Data Analysis","User Research","Experimentation"]},
+    {"id":"sample_010","title":"Principal Product Manager — Infrastructure","company":"Netflix","location":"Los Gatos, CA","description":"Define the strategy for Netflix's cloud infrastructure platform. Drive efficiency, reliability, and developer velocity for one of the world's largest streaming services.","url":"https://jobs.netflix.com/","source":"sample","salary_range":"$250K-$400K","remote":False,"posted_date":(datetime.now(UTC)-timedelta(hours=random.randint(1,48))).isoformat(),"seniority":"principal","skills_required":["Product Management","Cloud Infrastructure","Distributed Systems","Strategy","Technical Leadership","Cost Optimization"]},
+    {"id":"sample_011","title":"Product Manager","company":"Spotify","location":"New York, NY (Hybrid)","description":"Shape the future of music discovery on Spotify. Build personalized recommendation features that connect artists with listeners at global scale.","url":"https://www.lifeatspotify.com/jobs","source":"sample","salary_range":"$140K-$195K","remote":True,"posted_date":(datetime.now(UTC)-timedelta(hours=random.randint(1,48))).isoformat(),"seniority":"mid","skills_required":["Product Management","Recommendation Systems","A/B Testing","Data Analysis","User Research","Personalization"]},
+    {"id":"sample_012","title":"Senior Product Manager — API Platform","company":"Twilio","location":"San Francisco, CA (Remote)","description":"Own Twilio's communications API platform product. Define developer experience improvements, API standards, and partner integrations.","url":"https://www.twilio.com/company/jobs","source":"sample","salary_range":"$165K-$225K","remote":True,"posted_date":(datetime.now(UTC)-timedelta(hours=random.randint(1,48))).isoformat(),"seniority":"senior","skills_required":["Product Management","API Platform","Developer Experience","Technical Product","SaaS","Integration Design"]},
+]
 
 
 # ─── Schemas ────────────────────────────────────────────────────────────────
@@ -172,6 +190,14 @@ async def search_and_store_live_pm_jobs(
         logger.warning("Career page scan failed: %s", e)
         source_counts["career_pages"] = 0
 
+    # --- Fallback: seed sample jobs if no real jobs found ---
+    if not all_jobs:
+        logger.info("No real jobs found — falling back to sample data")
+        all_jobs = [j.copy() for j in SAMPLE_PM_JOBS]
+        for j in all_jobs:
+            j["source"] = "sample"
+        source_counts = {"sample": len(all_jobs)}
+
     # --- Store merged results ---
     data = _get_or_create_live_jobs_data()
     data[LIVE_JOBS_KEY] = all_jobs
@@ -194,11 +220,20 @@ async def search_and_store_live_pm_jobs(
 
 @router.get("/listings", response_model=LiveSearchResponse)
 async def get_live_listings():
-    """Get the latest cached live Product Manager job listings."""
+    """Get the latest cached live Product Manager job listings.
+
+    Returns sample data as fallback when no real jobs are available.
+    """
     data = _get_or_create_live_jobs_data()
     jobs = data.get(LIVE_JOBS_KEY, [])
     last_refresh = data.get(LAST_REFRESH_KEY)
     sources = data.get(SOURCES_KEY, {})
+
+    # Fallback to sample data if cache is empty
+    if not jobs:
+        jobs = [j.copy() for j in SAMPLE_PM_JOBS]
+        sources = {"sample": len(jobs)}
+        last_refresh = None
 
     # Check if cache is stale
     is_stale = False
@@ -217,6 +252,48 @@ async def get_live_listings():
         searched_at=last_refresh or "",
         is_cached=not is_stale,
     )
+
+
+@router.post("/seed", response_model=LiveSearchResponse)
+async def seed_sample_listings():
+    """Seed the live jobs cache with sample Product Manager listings.
+
+    Useful for testing the dashboard when real job sources are unavailable.
+    """
+    sample = [j.copy() for j in SAMPLE_PM_JOBS]
+    data = _get_or_create_live_jobs_data()
+    data[LIVE_JOBS_KEY] = sample
+    data[LAST_REFRESH_KEY] = datetime.now(UTC).isoformat()
+    data[SOURCES_KEY] = {"sample": len(sample)}
+    _save_live_jobs_data()
+    logger.info("Seeded %d sample live jobs", len(sample))
+    return LiveSearchResponse(
+        jobs=[LiveJobItem(**j) for j in sample],
+        total=len(sample),
+        sources={"sample": len(sample)},
+        searched_at=datetime.now(UTC).isoformat(),
+        is_cached=False,
+    )
+
+
+async def seed_sample_listings_if_empty() -> int:
+    """Seed sample data only if the live jobs cache is currently empty.
+
+    Returns the number of jobs seeded (0 if already populated).
+    Used at application startup to ensure the dashboard never starts blank.
+    """
+    data = _get_or_create_live_jobs_data()
+    existing = data.get(LIVE_JOBS_KEY, [])
+    if existing:
+        return 0
+
+    sample = [j.copy() for j in SAMPLE_PM_JOBS]
+    data[LIVE_JOBS_KEY] = sample
+    data[LAST_REFRESH_KEY] = datetime.now(UTC).isoformat()
+    data[SOURCES_KEY] = {"sample": len(sample)}
+    _save_live_jobs_data()
+    logger.info("Auto-seeded %d sample live jobs (cache was empty)", len(sample))
+    return len(sample)
 
 
 @router.post("/refresh", response_model=LiveSearchResponse)
