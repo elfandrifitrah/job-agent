@@ -105,6 +105,14 @@ async function clearAllFiles() {
    Browser-Side CV Parsing (pdf.js / mammoth.js / FileReader)
    ═══════════════════════════════════════════════════════════════════════════ */
 
+function withTimeout(promise, ms, msg) {
+  let id;
+  const timeout = new Promise((_, reject) => {
+    id = setTimeout(() => reject(new Error(msg || `Timed out after ${ms / 1000}s`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(id));
+}
+
 async function parseCV() {
   const fileInput = document.getElementById('cvFileInput');
   if (!fileInput.files || !fileInput.files.length) {
@@ -114,16 +122,19 @@ async function parseCV() {
 
   const file = fileInput.files[0];
   const ext = '.' + file.name.split('.').pop().toLowerCase();
-  showProgress('Reading file in browser...', 10);
+  showProgress('Reading file... If stuck, try a smaller or text-based PDF.', 5);
 
   try {
     let rawText;
     if (ext === '.pdf') {
-      // Show initial progress before PDF load
-      fillProgress(15);
-      rawText = await parsePDF(file, (pct) => {
-        fillProgress(10 + Math.round(pct * 0.35));
-      });
+      fillProgress(10);
+      rawText = await withTimeout(
+        parsePDF(file, (pct) => {
+          fillProgress(10 + Math.round(pct * 0.40));
+        }),
+        45000,
+        'PDF parsing timed out. The file may be too large, scanned (image-based), or use an unsupported format. Try a smaller / text-based PDF.'
+      );
     } else if (ext === '.docx' || ext === '.doc') {
       fillProgress(20);
       rawText = await parseDOCX(file);
@@ -131,15 +142,15 @@ async function parseCV() {
       rawText = await parseTXT(file);
     }
 
-    fillProgress(50);
+    fillProgress(55);
 
     if (!rawText || rawText.trim().length < 50) {
-      throw new Error('Could not extract enough text from the file (min 50 chars).');
+      throw new Error('Could not extract enough text from the file (min 50 chars). This often happens with scanned/image-based PDFs.');
     }
 
     localStorage.setItem('ja_raw_text', rawText);
 
-    fillProgress(65);
+    fillProgress(70);
 
     const profile = extractProfile(rawText, file.name);
     latestProfile = profile;
@@ -152,7 +163,6 @@ async function parseCV() {
     const name = escapeHtml(profile.full_name || 'Candidate');
     addToast(`✅ Parsed! Welcome, <strong>${name}</strong>. Found ${profile.skills.length} skills, ${profile.years_experience} years experience. 🔒 File never left your device.`, 'success');
 
-    // Show action bar
     document.getElementById('postParseArea').style.display = 'block';
     document.getElementById('parseConfirm').innerHTML =
       `✅ Parsed as <strong>${name}</strong> — ${profile.skills.length} skills, ${profile.years_experience} years`;
@@ -161,7 +171,7 @@ async function parseCV() {
 
   } catch (e) {
     hideProgress();
-    addToast(`❌ Parse failed: ${e.message}`, 'error');
+    addToast(`❌ ${e.message || 'Parse failed — unknown error'}`, 'error', 10000);
   }
 }
 
