@@ -82,3 +82,30 @@ async def dashboard_health(storage: StorageBackend = Depends(get_backend)):
         "database": "connected" if db_ok else "disconnected",
         "timestamp": datetime.now(UTC).isoformat(),
     }
+
+
+@router.get("/overview")
+async def get_dashboard_overview(storage: StorageBackend = Depends(get_backend)):
+    """Single-call dashboard overview: stats + sources + status distribution.
+    Reduces the frontend from 3 separate API calls to 1 on page load.
+    """
+    available = await storage.is_available()
+    stats = await storage.get_stats()
+    sources = await storage.count_jobs_by_source()
+    by_status = await storage.count_applications_by_status()
+
+    return {
+        "stats": {
+            "total_profiles": stats.total_profiles,
+            "total_jobs": stats.total_jobs,
+            "total_applications": stats.total_applications,
+            "submitted_applications": stats.submitted_applications,
+            "failed_applications": by_status.get("error", 0),
+            "captcha_blocked": by_status.get("captcha_blocked", 0),
+            "avg_match_score": round(stats.avg_match_score, 3),
+            "applications_today": stats.applications_today,
+            "database_connected": available,
+        },
+        "sources": [{"source": s.source, "count": s.count} for s in sources],
+        "status_distribution": by_status,
+    }

@@ -684,33 +684,57 @@ async function applyEligibleJobs() {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 async function loadAll() {
-  await Promise.all([loadStats(), loadApplications(), loadSources(), loadStatusDistribution()]);
+  await Promise.all([loadOverview(), loadApplications()]);
 }
 
-async function loadStats() {
-  const saved = localStorage.getItem('ja_profile');
-  if (saved) {
-    try {
-      const p = JSON.parse(saved);
-      document.getElementById('statProfiles').textContent = '1 (local)';
-    } catch (e) {}
-  }
+async function loadOverview() {
   try {
-    const res = await fetch(`${API_BASE}/api/dashboard/stats`);
+    const res = await fetch(`${API_BASE}/api/dashboard/overview`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    document.getElementById('statJobs').textContent = data.total_jobs ?? '—';
-    document.getElementById('statApplications').textContent = data.total_applications ?? '—';
-    document.getElementById('statSubmitted').textContent = data.submitted_applications ?? '—';
-    document.getElementById('statAvgScore').textContent = data.avg_match_score ? (data.avg_match_score * 100).toFixed(0) + '%' : '—';
-    document.getElementById('statToday').textContent = data.applications_today ?? '—';
+    const s = data.stats || {};
+
+    document.getElementById('statJobs').textContent = s.total_jobs ?? '—';
+    document.getElementById('statApplications').textContent = s.total_applications ?? '—';
+    document.getElementById('statSubmitted').textContent = s.submitted_applications ?? '—';
+    document.getElementById('statAvgScore').textContent = s.avg_match_score ? (s.avg_match_score * 100).toFixed(0) + '%' : '—';
+    document.getElementById('statToday').textContent = s.applications_today ?? '—';
+
     const badge = document.getElementById('dbStatus');
-    badge.textContent = data.database_connected ? '✓ connected' : '✗ disconnected';
-    badge.className = 'status-badge ' + (data.database_connected ? 'connected' : 'disconnected');
+    badge.textContent = s.database_connected ? '✓ connected' : '✗ disconnected';
+    badge.className = 'status-badge ' + (s.database_connected ? 'connected' : 'disconnected');
+
+    const saved = localStorage.getItem('ja_profile');
+    if (saved) document.getElementById('statProfiles').textContent = '1 (local)';
+
+    const sources = data.sources || [];
+    const sourceContainer = document.getElementById('sourceChart');
+    if (sources.length) {
+      const maxSrc = Math.max(...sources.map(x => x.count));
+      sourceContainer.innerHTML = sources.map(x => {
+        const pct = (x.count / maxSrc) * 100;
+        return `<div class="chart-bar"><div class="chart-bar-label">${x.source}</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:${Math.max(pct, 8)}%;background:${COLORS[x.source] || '#6366f1'}">${x.count}</div></div></div>`;
+      }).join('');
+    } else {
+      sourceContainer.innerHTML = '<div class="loading">No data</div>';
+    }
+
+    const byStatus = data.status_distribution || {};
+    const statusEntries = Object.entries(byStatus);
+    const statusContainer = document.getElementById('statusChart');
+    if (statusEntries.length) {
+      const maxSt = Math.max(...statusEntries.map(([_, c]) => c));
+      statusContainer.innerHTML = statusEntries.map(([status, count]) => {
+        const pct = (count / maxSt) * 100;
+        return `<div class="chart-bar"><div class="chart-bar-label">${status.replace(/_/g, ' ')}</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:${Math.max(pct, 8)}%;background:${COLORS[status] || '#6366f1'}">${count}</div></div></div>`;
+      }).join('');
+    } else {
+      statusContainer.innerHTML = '<div class="loading">No data</div>';
+    }
   } catch (e) {
     ['statJobs','statApplications','statSubmitted','statAvgScore','statToday'].forEach(id => document.getElementById(id).textContent = '⚠');
-    const badge = document.getElementById('dbStatus');
-    badge.textContent = '✗ error'; badge.className = 'status-badge disconnected';
+    document.getElementById('dbStatus').textContent = '✗ error';
+    document.getElementById('dbStatus').className = 'status-badge disconnected';
   }
 }
 
@@ -739,42 +763,6 @@ async function loadApplications() {
       </tr>`).join('');
   } catch (e) {
     document.getElementById('applicationsBody').innerHTML = '<tr><td colspan="8" class="loading">⚠ Connection error</td></tr>';
-  }
-}
-
-async function loadSources() {
-  try {
-    const res = await fetch(`${API_BASE}/api/dashboard/sources`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const sources = await res.json();
-    const container = document.getElementById('sourceChart');
-    if (!sources.length) { container.innerHTML = '<div class="loading">No data</div>'; return; }
-    const maxCount = Math.max(...sources.map(s => s.count));
-    container.innerHTML = sources.map(s => {
-      const pct = (s.count / maxCount) * 100;
-      return `<div class="chart-bar"><div class="chart-bar-label">${s.source}</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:${Math.max(pct, 8)}%;background:${COLORS[s.source] || '#6366f1'}">${s.count}</div></div></div>`;
-    }).join('');
-  } catch (e) {
-    document.getElementById('sourceChart').innerHTML = '<div class="loading">⚠ Error</div>';
-  }
-}
-
-async function loadStatusDistribution() {
-  try {
-    const res = await fetch(`${API_BASE}/api/applications/stats`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const stats = await res.json();
-    const container = document.getElementById('statusChart');
-    const byStatus = stats.by_status || {};
-    const entries = Object.entries(byStatus);
-    if (!entries.length) { container.innerHTML = '<div class="loading">No data</div>'; return; }
-    const maxCount = Math.max(...entries.map(([_, c]) => c));
-    container.innerHTML = entries.map(([status, count]) => {
-      const pct = (count / maxCount) * 100;
-      return `<div class="chart-bar"><div class="chart-bar-label">${status.replace(/_/g, ' ')}</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:${Math.max(pct, 8)}%;background:${COLORS[status] || '#6366f1'}">${count}</div></div></div>`;
-    }).join('');
-  } catch (e) {
-    document.getElementById('statusChart').innerHTML = '<div class="loading">⚠ Error</div>';
   }
 }
 
