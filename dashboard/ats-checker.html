@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
 <title>ATS Resume Checker — Job Agent Dashboard</title>
 <link rel="stylesheet" href="style.css">
 <style>
@@ -134,7 +135,8 @@ function toggleInputMethod() {
     const saved = localStorage.getItem('ja_profile');
     if (saved) {
       const p = JSON.parse(saved);
-      info.innerHTML = `<strong>${p.full_name || 'Candidate'}</strong> — ${(p.skills || []).length} skills, ${p.years_experience || 0} years exp.<br><small>🔒 Stored locally</small>`;
+      const safeName = (p.full_name || 'Candidate').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      info.innerHTML = `<strong>${safeName}</strong> — ${(p.skills || []).length} skills, ${p.years_experience || 0} years exp.<br><small>🔒 Stored locally</small>`;
     } else {
       info.innerHTML = 'No profile found. Parse a CV on the Dashboard first.';
     }
@@ -204,7 +206,12 @@ function runCheck() {
 
   const suggestionsList = document.getElementById('suggestionsList');
   if (result.suggestions && result.suggestions.length > 0) {
-    suggestionsList.innerHTML = result.suggestions.map(s => `<div class="suggestion">${s}</div>`).join('');
+    suggestionsList.innerHTML = result.suggestions.map(s => {
+      const div = document.createElement('div');
+      div.className = 'suggestion';
+      div.textContent = s;
+      return div.outerHTML;
+    }).join('');
   } else {
     suggestionsList.innerHTML = '<p>No suggestions — your CV looks great!</p>';
   }

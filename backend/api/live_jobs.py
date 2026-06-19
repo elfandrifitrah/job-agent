@@ -119,6 +119,11 @@ async def search_and_store_live_pm_jobs(
     Deduplicates by job ID (deterministic hash) and stores merged results
     with source breakdown. Returns the deduplicated job list.
     """
+    import re as _re
+
+    # SSRF prevention: sanitize keyword — only allow alphanumeric, spaces, hyphens, ampersands
+    keyword = _re.sub(r"[^a-zA-Z0-9\s&'.,\-]", "", keyword)[:100]
+
     from backend.config import settings
     from backend.services.job_discovery import AdzunaSource, FirecrawlSource, JobicySource, SearchParams
 
@@ -308,6 +313,8 @@ async def refresh_live_listings(
     days_old: int = Query(1, ge=0, le=7, description="Only include jobs posted within N days"),
 ):
     """Force-refresh live Product Manager job listings from all sources."""
+    import re as _re
+    keyword = _re.sub(r"[^a-zA-Z0-9\s&'.,\-]", "", keyword)[:100]
     job_dicts = await search_and_store_live_pm_jobs(
         keyword=keyword,
         max_results=max_results,

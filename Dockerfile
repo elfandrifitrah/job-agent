@@ -1,4 +1,4 @@
-FROM python:3.12
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -9,8 +9,12 @@ RUN pip install --no-cache-dir --default-timeout=120 -r requirements-hf.txt
 # Copy application code
 COPY . .
 
-# Create data directories
-RUN mkdir -p /app/data/chroma /app/data/cvs /app/data/cover_letters /app/data/screenshots
+# Create data directories with proper permissions
+RUN mkdir -p /app/data/chroma /app/data/cvs /app/data/cover_letters /app/data/screenshots \
+    && chown -R nobody:nogroup /app/data
+
+# Run as non-root
+USER nobody
 
 EXPOSE 7860
 

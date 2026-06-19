@@ -297,7 +297,7 @@ async def apply_now(
         app_id = await backend.create_application(app_data)
     except Exception as e:
         logger.error("Could not create application: %s", e)
-        raise HTTPException(status_code=500, detail=f"Could not create application: {e}")
+        raise HTTPException(status_code=500, detail="Could not create application. Please try again.")
 
     return {
         "status": "submitted",

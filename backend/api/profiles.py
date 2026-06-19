@@ -123,12 +123,38 @@ async def parse_cv(
     from backend.services.cv_parser import CVParser
 
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+    ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt"}
     import tempfile
     from pathlib import Path
-    suffix = Path(file.filename).suffix if file.filename else ".pdf"
+
+    # Validate file extension
+    suffix = Path(file.filename).suffix.lower() if file.filename else ""
+    if suffix not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type '{suffix}'. Allowed: PDF, DOCX, TXT.",
+        )
+
+    # Validate content type (basic check — not foolproof but raises the bar)
+    content_type = file.content_type or ""
+    allowed_ct = {
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
+        "text/plain",
+    }
+    if content_type and content_type not in allowed_ct:
+        # Some clients send wrong content types; log but allow if extension is ok
+        logger.warning("Unexpected content type %s for file %s", content_type, file.filename)
+
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail=f"File too large ({len(content) // 1024 // 1024}MB). Maximum is 10MB.")
+
+    # Validate magic bytes for PDF
+    if suffix == ".pdf" and not content[:4] == b"%PDF":
+        raise HTTPException(status_code=400, detail="File appears not to be a valid PDF.")
+
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(content)
         tmp_path = tmp.name
@@ -150,8 +176,11 @@ async def parse_cv(
             "years_experience": profile.years_of_experience,
             "message": "Profile parsed and saved",
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning("CV parse failed: %s", type(e).__name__)
+        raise HTTPException(status_code=400, detail="Failed to parse CV. Ensure the file is a valid PDF, DOCX, or TXT.")
     finally:
         import os
         os.unlink(tmp_path)

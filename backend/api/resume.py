@@ -95,9 +95,15 @@ async def tailor(req: TailorRequest):
 @router.get("/download")
 async def download_resume(path: str):
     """Download a tailored resume PDF. Path must be within the tailored_resumes directory."""
-    file_path = Path(path).resolve()
+    import os
+    # Only accept filenames, not full paths — prevents path traversal
+    safe_name = os.path.basename(path)
+    if safe_name != path or not safe_name:
+        raise HTTPException(status_code=400, detail="Invalid file path")
+
+    file_path = (TAILORED_DIR / safe_name).resolve()
     allowed = TAILORED_DIR.resolve()
-    if not str(file_path).startswith(str(allowed)):
+    if not str(file_path).startswith(str(allowed) + os.sep) and file_path != allowed:
         raise HTTPException(status_code=400, detail="Invalid file path")
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")

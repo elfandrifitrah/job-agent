@@ -136,4 +136,4 @@ async def generate_cover_letter(
 
     except Exception as e:
         logger.error("Cover letter generation failed: %s", e)
-        raise HTTPException(status_code=500, detail=f"Cover letter generation failed: {e}")
+        raise HTTPException(status_code=500, detail="Cover letter generation failed. Please try again.")

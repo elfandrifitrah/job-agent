@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
 <title>AI Persona — Job Agent Dashboard</title>
 <link rel="stylesheet" href="style.css">
 <style>
@@ -104,6 +105,13 @@
 <script>
 const PERSONA_API = '/api/persona';
 
+function escapeHtmlPersona(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 async function fetchJson(url, opts = {}) {
   const r = await fetch(url, opts);
   if (!r.ok) { const e = await r.text(); throw new Error(e); }
@@ -116,10 +124,10 @@ function loadLocalProfile() {
   if (saved) {
     const p = JSON.parse(saved);
     display.innerHTML = `
-      <p><strong>${p.full_name || 'Candidate'}</strong>
-      ${p.email ? ' · ' + p.email : ''}
-      ${p.seniority ? ' · ' + p.seniority : ''}
-      ${p.years_experience ? ' · ' + p.years_experience + ' years' : ''}</p>
+      <p><strong>${escapeHtmlPersona(p.full_name || 'Candidate')}</strong>
+      ${p.email ? ' · ' + escapeHtmlPersona(p.email) : ''}
+      ${p.seniority ? ' · ' + escapeHtmlPersona(p.seniority) : ''}
+      ${p.years_experience ? ' · ' + escapeHtmlPersona(String(p.years_experience)) + ' years' : ''}</p>
       <p style="font-size:0.85rem;color:var(--text-secondary);margin-top:4px;">
         ${(p.skills || []).length} skills · ${(p.experiences || []).length} roles
         <br><small>🔒 Stored in browser localStorage only</small>
@@ -149,7 +157,7 @@ async function loadPersona() {
       document.getElementById('commStyle').textContent = (data.communication_style || '').toUpperCase();
       document.getElementById('toneDesc').textContent = data.tone_description || '';
       document.getElementById('voiceSample').textContent = data.voice_sample || 'No voice sample.';
-      document.getElementById('keyMessages').innerHTML = (data.key_messages || []).map(m => `<div class="key-msg">"${m}"</div>`).join('');
+      document.getElementById('keyMessages').innerHTML = (data.key_messages || []).map(m => `<div class="key-msg">"${escapeHtmlPersona(m)}"</div>`).join('');
 
       const qaDiv = document.getElementById('qaList');
       const answers = data.screening_answers || {};
@@ -158,7 +166,7 @@ async function loadPersona() {
         qaDiv.innerHTML = '<p>No Q&amp;A yet.</p>';
       } else {
         qaDiv.innerHTML = keys.map(k =>
-          `<div class="qa-pair"><div class="qa-q">${k}</div><div class="qa-a">${answers[k]}</div></div>`
+          `<div class="qa-pair"><div class="qa-q">${escapeHtmlPersona(k)}</div><div class="qa-a">${escapeHtmlPersona(answers[k])}</div></div>`
         ).join('');
       }
       return;
@@ -178,7 +186,7 @@ async function loadQuestions() {
     const container = document.getElementById('questionsContainer');
     container.innerHTML = data.questions.map((q, i) =>
       `<div class="question-card">
-        <h3><span class="qnum">Q${i + 1}</span>${q}</h3>
+        <h3><span class="qnum">Q${i + 1}</span>${escapeHtmlPersona(q)}</h3>
         <textarea id="q${i}" placeholder="Type your answer..." rows="3"></textarea>
       </div>`
     ).join('');

@@ -16,15 +16,19 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
+    # ─── Environment ───
+    environment: str = "development"  # "development" or "production"
+
     # ─── API Auth ───
     api_key: str = ""
+    allowed_origins: str = ""  # comma-separated list, empty = auto-detect from REFERER
 
     # ─── LLM API Keys ───
     claude_api_key: str = ""
     openai_api_key: str = ""
 
     # ─── Database ───
-    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/job_agent"
+    database_url: str = "postgresql+asyncpg://jobagent:changeme@localhost:5432/job_agent"
     redis_url: str = "redis://localhost:6379/0"
 
     # ─── Vector Store ───

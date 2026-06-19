@@ -713,7 +713,7 @@ async function loadOverview() {
       const maxSrc = Math.max(...sources.map(x => x.count));
       sourceContainer.innerHTML = sources.map(x => {
         const pct = (x.count / maxSrc) * 100;
-        return `<div class="chart-bar"><div class="chart-bar-label">${x.source}</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:${Math.max(pct, 8)}%;background:${COLORS[x.source] || '#6366f1'}">${x.count}</div></div></div>`;
+        return `<div class="chart-bar"><div class="chart-bar-label">${escapeHtml(x.source)}</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:${Math.max(pct, 8)}%;background:${COLORS[x.source] || '#6366f1'}">${escapeHtml(String(x.count))}</div></div></div>`;
       }).join('');
     } else {
       sourceContainer.innerHTML = '<div class="loading">No data</div>';
@@ -726,7 +726,7 @@ async function loadOverview() {
       const maxSt = Math.max(...statusEntries.map(([_, c]) => c));
       statusContainer.innerHTML = statusEntries.map(([status, count]) => {
         const pct = (count / maxSt) * 100;
-        return `<div class="chart-bar"><div class="chart-bar-label">${status.replace(/_/g, ' ')}</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:${Math.max(pct, 8)}%;background:${COLORS[status] || '#6366f1'}">${count}</div></div></div>`;
+        return `<div class="chart-bar"><div class="chart-bar-label">${escapeHtml(status.replace(/_/g, ' '))}</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:${Math.max(pct, 8)}%;background:${COLORS[status] || '#6366f1'}">${escapeHtml(String(count))}</div></div></div>`;
       }).join('');
     } else {
       statusContainer.innerHTML = '<div class="loading">No data</div>';
@@ -749,16 +749,16 @@ async function loadApplications() {
     if (!apps.length) { tbody.innerHTML = '<tr><td colspan="8" class="loading">No applications</td></tr>'; return; }
     tbody.innerHTML = apps.map(app => `
       <tr>
-        <td><span class="status-badge-cell status-${app.status}">● ${app.status}</span></td>
+        <td><span class="status-badge-cell status-${escapeHtml(app.status)}">● ${escapeHtml(app.status)}</span></td>
         <td>${escapeHtml(app.job_title)}</td>
         <td>${escapeHtml(app.company)}</td>
-        <td>${(app.match_score * 100).toFixed(0)}%</td>
-        <td>${app.ats_name || '—'}</td>
-        <td>${app.fields_filled}/${app.total_fields}</td>
+        <td>${escapeHtml((app.match_score * 100).toFixed(0))}%</td>
+        <td>${escapeHtml(app.ats_name) || '—'}</td>
+        <td>${escapeHtml(String(app.fields_filled))}/${escapeHtml(String(app.total_fields))}</td>
         <td>${formatDate(app.created_at)}</td>
         <td>
-          ${(app.status === 'error' || app.status === 'captcha_blocked') ? `<button class="btn-action-retry" onclick="retryApplication('${app.id}')">↻ Retry</button>` : ''}
-          <button class="btn-action-detail" onclick="showApplicationDetails('${app.id}')">Details</button>
+          ${(app.status === 'error' || app.status === 'captcha_blocked') ? `<button class="btn-action-retry" onclick="retryApplication('${escapeHtml(app.id)}')">↻ Retry</button>` : ''}
+          <button class="btn-action-detail" onclick="showApplicationDetails('${escapeHtml(app.id)}')">Details</button>
         </td>
       </tr>`).join('');
   } catch (e) {
@@ -921,7 +921,9 @@ function addToast(message, type, duration) {
   const container = document.getElementById('toastContainer');
   const toast = document.createElement('div');
   toast.className = 'toast toast-' + type;
-  toast.innerHTML = '<span style="flex:1">' + message + '</span><button class="toast-dismiss" onclick="removeToast(this)">✕</button>';
+  // Only allow safe HTML tags in toasts (strong, em, br)
+  const safeMessage = message.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/on\w+="[^"]*"/gi, '');
+  toast.innerHTML = '<span style="flex:1">' + safeMessage + '</span><button class="toast-dismiss" onclick="removeToast(this)">✕</button>';
   container.appendChild(toast);
   if (duration > 0) {
     setTimeout(() => { if (toast.parentNode) removeToast(toast.querySelector('.toast-dismiss')); }, duration);

@@ -139,6 +139,8 @@ class JSONStorage:
         self.db_path = db_path or settings.data_dir / "store.json"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._data: dict[str, Any] = self._load()
+        self._file_lock = threading.Lock()
+        self._data_lock = threading.Lock()
 
     def _load(self) -> dict:
         if self.db_path.exists():
@@ -150,10 +152,12 @@ class JSONStorage:
         return {"profiles": [], "applications": [], "jobs": []}
 
     def _save(self) -> None:
-        self.db_path.write_text(json.dumps(self._data, indent=2, default=str))
+        with self._file_lock:
+            self.db_path.write_text(json.dumps(self._data, indent=2, default=str))
 
     def save_profile(self, profile: dict) -> None:
-        self._data["profiles"].append(profile)
+        with self._data_lock:
+            self._data["profiles"].append(profile)
         self._save()
 
     def get_profiles(self) -> list[dict]:
@@ -164,21 +168,24 @@ class JSONStorage:
         return profiles[-1] if profiles else None
 
     def save_application(self, app: dict) -> None:
-        self._data["applications"].append(app)
+        with self._data_lock:
+            self._data["applications"].append(app)
         self._save()
 
     def get_applications(self) -> list[dict]:
         return self._data.get("applications", [])
 
     def save_jobs(self, jobs: list[dict]) -> None:
-        self._data["jobs"] = jobs
+        with self._data_lock:
+            self._data["jobs"] = jobs
         self._save()
 
     def get_jobs(self) -> list[dict]:
         return self._data.get("jobs", [])
 
     def clear(self) -> None:
-        self._data = {"profiles": [], "applications": [], "jobs": []}
+        with self._data_lock:
+            self._data = {"profiles": [], "applications": [], "jobs": []}
         self._save()
 
 

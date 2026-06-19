@@ -49,8 +49,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._last_cleanup = time.monotonic()
 
     def _client_ip(self, request: Request) -> str:
+        # Only trust X-Forwarded-For if behind a known reverse proxy
+        # (e.g., HF Spaces, Cloudflare, nginx). Otherwise use direct client IP.
         forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
+        if forwarded and request.headers.get("x-forwarded-host"):
+            # Only trust if x-forwarded-host is also present (reverse proxy indicator)
             return forwarded.split(",")[0].strip()
         return request.client.host if request.client else "unknown"
 

@@ -8,6 +8,8 @@ Routes that should be public (health, docs, static dashboard) are excluded.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
 
 from fastapi import FastAPI, HTTPException, Request, status
@@ -31,15 +33,11 @@ PUBLIC_PATHS = {
 class APIKeyMiddleware(BaseHTTPMiddleware):
     """Middleware that validates the X-API-Key header on all /api/* routes.
 
-    If API_KEY is not configured (empty string), authentication is disabled
-    — this allows development without setting up credentials.
+    In production mode (ENVIRONMENT=production), API_KEY MUST be set.
+    In development mode, auth is skipped when API_KEY is empty.
     """
 
     async def dispatch(self, request: Request, call_next):
-        # Skip auth when no key is configured
-        if not settings.api_key:
-            return await call_next(request)
-
         # Allow CORS preflight through (browsers don't send custom headers on OPTIONS)
         if request.method == "OPTIONS":
             return await call_next(request)
@@ -54,8 +52,18 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
         if not path.startswith("/api/"):
             return await call_next(request)
 
+        # Skip auth when no key is configured (dev mode only)
+        if not settings.api_key:
+            if settings.environment == "production":
+                logger.error("CRITICAL: API_KEY not set in production mode!")
+                return JSONResponse(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    content={"detail": "Server misconfigured: API_KEY required in production."},
+                )
+            return await call_next(request)
+
         api_key = request.headers.get("X-API-Key", "")
-        if not api_key or api_key != settings.api_key:
+        if not api_key or not hmac.compare_digest(api_key, settings.api_key):
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content={"detail": "Missing or invalid API key. Provide it via the X-API-Key header."},
@@ -68,7 +76,9 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
 def setup_auth_middleware(app: FastAPI) -> None:
     """Register the API key middleware on the FastAPI app."""
     app.add_middleware(APIKeyMiddleware)
-    logger.info(
-        "API key authentication is %s",
-        "ENABLED" if settings.api_key else "DISABLED (no API_KEY set)",
-    )
+    if settings.api_key:
+        logger.info("API key authentication is ENABLED")
+    elif settings.environment == "production":
+        logger.warning("API key authentication is DISABLED — SECURITY RISK in production!")
+    else:
+        logger.info("API key authentication is DISABLED (development mode)")

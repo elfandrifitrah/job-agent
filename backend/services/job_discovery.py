@@ -20,6 +20,7 @@ import logging
 import random
 import re
 import time
+import urllib.parse
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -248,9 +249,10 @@ class LinkedInSource(PlaywrightSource):
             page.wait_for_load_state("networkidle")
             self._delay(3, 6)
 
-            # Build search URL
-            keywords = params.role.replace(" ", "%20")
-            location = params.location.replace(" ", "%20") if params.location else ""
+            # Build search URL — sanitize user input to prevent injection
+            import urllib.parse
+            keywords = urllib.parse.quote(params.role[:100], safe="")
+            location = urllib.parse.quote(params.location[:100], safe="") if params.location else ""
             search_url = (
                 f"https://www.linkedin.com/jobs/search/"
                 f"?keywords={keywords}"
@@ -329,8 +331,8 @@ class IndeedSource(PlaywrightSource):
         try:
             page, browser, playwright = self._get_page()
 
-            query = params.role.replace(" ", "+")
-            location = params.location.replace(" ", "+") if params.location else ""
+            query = urllib.parse.quote(params.role[:100], safe="")
+            location = urllib.parse.quote(params.location[:100], safe="") if params.location else ""
             search_url = (
                 f"https://www.indeed.com/jobs?"
                 f"q={query}"
@@ -572,7 +574,7 @@ class FirecrawlSource(JobSource):
         self, params: SearchParams, api_key: str
     ) -> list[JobPosting]:
         """Scrape Indeed job search via Firecrawl + BeautifulSoup HTML parsing."""
-        query = params.role.replace(" ", "+")
+        query = urllib.parse.quote(params.role[:100], safe="")
         search_url = (
             f"https://www.indeed.com/jobs?"
             f"q={query}"
