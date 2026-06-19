@@ -153,7 +153,10 @@ class PostgresBackend(StorageBackend):
         return _app_with_job_dict(a) if a else None
 
     async def create_application(self, data: dict[str, Any]) -> str:
-        orm = ApplicationModel(**data)
+        # Only pass fields that ApplicationModel actually has
+        valid_keys = {c.name for c in ApplicationModel.__table__.columns}
+        filtered = {k: v for k, v in data.items() if k in valid_keys}
+        orm = ApplicationModel(**filtered)
         self.db.add(orm)
         await self.db.flush()
         return str(orm.id)

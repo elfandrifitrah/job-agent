@@ -24,17 +24,31 @@ _fallback_backend: JsonBackend | None = None
 
 
 async def get_backend() -> AsyncGenerator[StorageBackend, None]:
-    """Yield a StorageBackend — PostgreSQL if available, JSON fallback otherwise."""
+    """Yield a StorageBackend — PostgreSQL if available, JSON fallback otherwise.
+
+    Only catches errors during the initial connection test. Errors during
+    endpoint operations (e.g. constraint violations) propagate normally.
+    """
+    session: AsyncSession | None = None
     try:
-        async with AsyncSessionLocal() as session:
-            await session.execute(text("SELECT 1"))
-            backend = PostgresBackend(session)
-            logger.debug("Using PostgreSQL storage backend")
-            yield backend
-            await session.commit()
+        session = AsyncSessionLocal()
+        await session.execute(text("SELECT 1"))
     except Exception as e:
         logger.warning("PostgreSQL unavailable (%s), falling back to JSON storage", e)
+        if session is not None:
+            await session.close()
         global _fallback_backend
         if _fallback_backend is None:
             _fallback_backend = JsonBackend()
         yield _fallback_backend
+        return
+
+    backend = PostgresBackend(session)
+    try:
+        yield backend
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
