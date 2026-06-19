@@ -122,11 +122,14 @@ async def parse_cv(
     """Upload and parse a CV file."""
     from backend.services.cv_parser import CVParser
 
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
     import tempfile
     from pathlib import Path
     suffix = Path(file.filename).suffix if file.filename else ".pdf"
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail=f"File too large ({len(content) // 1024 // 1024}MB). Maximum is 10MB.")
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        content = await file.read()
         tmp.write(content)
         tmp_path = tmp.name
 
