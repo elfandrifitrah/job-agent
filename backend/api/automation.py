@@ -82,6 +82,51 @@ def _dict_to_job_posting(d: dict) -> JobPosting:
     )
 
 
+async def _build_profile(
+    backend: StorageBackend,
+    profile_id: str,
+    raw_text: str = "",
+) -> CandidateProfile:
+    """Build a CandidateProfile from raw text (local) or from the storage backend."""
+    from backend.models.profile import Education, Experience, SeniorityLevel, Skill
+
+    is_local = profile_id == "local" or not profile_id
+    if is_local and raw_text:
+        return CandidateProfile(raw_text=raw_text, full_name="Local Candidate")
+
+    orm = await backend.get_profile(profile_id)
+    if not orm:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return CandidateProfile(
+        full_name=orm.get("full_name", ""),
+        email=orm.get("email", ""),
+        raw_text=orm.get("raw_text", "") or "",
+        skills=[Skill(**s) for s in (orm.get("skills") or [])],
+        experiences=[Experience(**e) for e in (orm.get("experiences") or [])],
+        education=[Education(**e) for e in (orm.get("education") or [])],
+        years_of_experience=float(orm.get("years_of_experience", 0)),
+        seniority=SeniorityLevel(orm.get("seniority", "unknown")),
+        target_roles=orm.get("target_roles") or [],
+        preferred_locations=orm.get("preferred_locations") or [],
+        remote_preferred=bool(orm.get("remote_preferred", False)),
+    )
+
+
+async def _ensure_local_profile(
+    backend: StorageBackend,
+    raw_text: str = "",
+) -> str:
+    """Ensure a profile with id='local' exists; create if needed. Returns profile_id."""
+    profile_id = "local"
+    existing = await backend.get_profile(profile_id)
+    if not existing:
+        try:
+            await backend.create_profile({"id": profile_id, "full_name": "Local Candidate", "raw_text": raw_text or ""})
+        except Exception as e:
+            logger.warning("Could not create local profile: %s", e)
+    return profile_id
+
+
 # ─── Endpoints ──────────────────────────────────────────────────────────────
 
 @router.post("/match")
@@ -93,30 +138,9 @@ async def match_jobs(
 
     Works with both PostgreSQL and JSON file storage.
     """
-    from backend.models.profile import Education, Experience, SeniorityLevel, Skill
     from backend.services.matcher import SemanticMatcher
 
-    # Build CandidateProfile from raw text (local profile) or from DB
-    is_local = req.profile_id == "local" or not req.profile_id
-    if is_local and req.raw_text:
-        profile = CandidateProfile(raw_text=req.raw_text, full_name="Local Candidate")
-    else:
-        profile_orm = await backend.get_profile(req.profile_id)
-        if not profile_orm:
-            raise HTTPException(status_code=404, detail="Profile not found")
-        profile = CandidateProfile(
-            full_name=profile_orm.get("full_name", ""),
-            email=profile_orm.get("email", ""),
-            raw_text=profile_orm.get("raw_text", "") or "",
-            skills=[Skill(**s) for s in (profile_orm.get("skills") or [])],
-            experiences=[Experience(**e) for e in (profile_orm.get("experiences") or [])],
-            education=[Education(**e) for e in (profile_orm.get("education") or [])],
-            years_of_experience=float(profile_orm.get("years_of_experience", 0)),
-            seniority=SeniorityLevel(profile_orm.get("seniority", "unknown")),
-            target_roles=profile_orm.get("target_roles") or [],
-            preferred_locations=profile_orm.get("preferred_locations") or [],
-            remote_preferred=bool(profile_orm.get("remote_preferred", False)),
-        )
+    profile = await _build_profile(backend, req.profile_id, req.raw_text)
 
     # Load jobs from storage backend (works with JSON fallback)
     raw_jobs = await backend.list_jobs(limit=100)
@@ -131,15 +155,7 @@ async def match_jobs(
     matcher = SemanticMatcher(threshold=req.threshold)
     results = matcher.rank(profile, jobs, top_k=req.top_k)
 
-    # Ensure profile exists for FK / JSON consistency
-    profile_id = req.profile_id or "local"
-    if profile_id == "local":
-        existing = await backend.get_profile("local")
-        if not existing:
-            try:
-                await backend.create_profile({"id": "local", "full_name": "Local Candidate", "raw_text": req.raw_text or ""})
-            except Exception as e:
-                logger.warning("Could not create local profile: %s", e)
+    profile_id = await _ensure_local_profile(backend, req.raw_text)
 
     saved = 0
     saved_apps = {}
@@ -190,30 +206,9 @@ async def analyze_profile(
     Scores each job, filters to those passing threshold (default >=60%),
     and reports eligibility.
     """
-    from backend.models.profile import Education, Experience, SeniorityLevel, Skill
     from backend.services.analyzer import JobAnalyzer
 
-    # Build CandidateProfile from raw text or existing profile
-    is_local = req.profile_id == "local" or not req.profile_id
-    if is_local and req.raw_text:
-        profile = CandidateProfile(raw_text=req.raw_text, full_name="Local Candidate")
-    else:
-        orm_profile = await backend.get_profile(req.profile_id)
-        if not orm_profile:
-            raise HTTPException(status_code=404, detail="Profile not found")
-        profile = CandidateProfile(
-            full_name=orm_profile.get("full_name", ""),
-            email=orm_profile.get("email", ""),
-            raw_text=orm_profile.get("raw_text", "") or "",
-            skills=[Skill(**s) for s in (orm_profile.get("skills") or [])],
-            experiences=[Experience(**e) for e in (orm_profile.get("experiences") or [])],
-            education=[Education(**e) for e in (orm_profile.get("education") or [])],
-            years_of_experience=float(orm_profile.get("years_of_experience", 0)),
-            seniority=SeniorityLevel(orm_profile.get("seniority", "unknown")),
-            target_roles=orm_profile.get("target_roles") or [],
-            preferred_locations=orm_profile.get("preferred_locations") or [],
-            remote_preferred=bool(orm_profile.get("remote_preferred", False)),
-        )
+    profile = await _build_profile(backend, req.profile_id, req.raw_text)
 
     # Load jobs from storage
     raw_jobs = await backend.list_jobs(limit=200)
@@ -298,14 +293,7 @@ async def apply_now(
     This is the direct-submit endpoint used by the frontend's
     'Submit All Eligible' flow — no browser automation needed.
     """
-    profile_id = req.profile_id or "local"
-    if profile_id == "local":
-        existing = await backend.get_profile("local")
-        if not existing:
-            try:
-                await backend.create_profile({"id": "local", "full_name": "Local Candidate"})
-            except Exception as e:
-                logger.warning("Could not create local profile: %s", e)
+    profile_id = await _ensure_local_profile(backend, req.profile_id)
 
     app_data = {
         "profile_id": profile_id,
@@ -315,7 +303,6 @@ async def apply_now(
     }
     try:
         app_id = await backend.create_application(app_data)
-        await backend.update_application_status(app_id, "submitted")
     except Exception as e:
         logger.error("Could not create application: %s", e)
         raise HTTPException(status_code=500, detail=f"Could not create application: {e}")
