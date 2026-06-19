@@ -45,7 +45,7 @@ class JsonBackend(StorageBackend):
 
     async def create_profile(self, data: dict[str, Any]) -> str:
         import uuid
-        profile_id = str(uuid.uuid4())
+        profile_id = data.get("id") or str(uuid.uuid4())
         data["id"] = profile_id
         data["parsed_at"] = datetime.now(UTC).isoformat()
         json_storage.save_profile(data)

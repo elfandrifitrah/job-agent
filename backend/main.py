@@ -39,8 +39,20 @@ async def lifespan(app: FastAPI):
 
     # Seed sample live jobs if cache is empty (so dashboard never starts blank)
     try:
-        from backend.api.live_jobs import seed_sample_listings_if_empty
+        from backend.api.live_jobs import SAMPLE_PM_JOBS, seed_sample_listings_if_empty
         await seed_sample_listings_if_empty()
+
+        # Also seed the storage backend (PG/JSON) for match/analyze if empty
+        from backend.storage.deps import get_backend
+        backend_gen = get_backend()
+        backend = await backend_gen.__anext__()
+        try:
+            existing = await backend.list_jobs(limit=1)
+            if not existing:
+                await backend.store_jobs([j.copy() for j in SAMPLE_PM_JOBS])
+                logger.info("Seeded %d sample jobs into storage backend", len(SAMPLE_PM_JOBS))
+        finally:
+            await backend_gen.aclose()
     except Exception as e:
         logger.warning("Failed to seed sample live jobs: %s", e)
 

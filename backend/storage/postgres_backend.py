@@ -47,11 +47,18 @@ class PostgresBackend(StorageBackend):
         return _profile_to_dict(p, detailed=True) if p else None
 
     async def create_profile(self, data: dict[str, Any]) -> str:
-        from backend.models.db_models import profile_to_orm
+        from backend.models.db_models import profile_to_orm, ProfileModel
         from backend.models.profile import CandidateProfile
-        # Reconstruct Pydantic model so profile_to_orm() handles field mapping
+
+        # Allow callers to specify a fixed id (e.g. 'local')
+        fixed_id = data.pop("id", None)
+
         profile = CandidateProfile(**data)
         orm = profile_to_orm(profile)
+
+        if fixed_id:
+            orm.id = fixed_id
+
         self.db.add(orm)
         await self.db.flush()
         return str(orm.id)

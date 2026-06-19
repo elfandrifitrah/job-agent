@@ -15,7 +15,7 @@ import random
 from datetime import UTC, datetime, timedelta
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from backend.database import storage as json_storage
@@ -255,10 +255,13 @@ async def get_live_listings():
 
 
 @router.post("/seed", response_model=LiveSearchResponse)
-async def seed_sample_listings():
+async def seed_sample_listings(
+    backend: StorageBackend = Depends(get_backend),
+):
     """Seed the live jobs cache with sample Product Manager listings.
 
-    Useful for testing the dashboard when real job sources are unavailable.
+    Also stores them in the storage backend (PG or JSON) so that
+    match/analyze endpoints can find them immediately.
     """
     sample = [j.copy() for j in SAMPLE_PM_JOBS]
     data = _get_or_create_live_jobs_data()
@@ -266,6 +269,8 @@ async def seed_sample_listings():
     data[LAST_REFRESH_KEY] = datetime.now(UTC).isoformat()
     data[SOURCES_KEY] = {"sample": len(sample)}
     _save_live_jobs_data()
+    # Also store to the persistent backend for match/analyze
+    await backend.store_jobs(sample)
     logger.info("Seeded %d sample live jobs", len(sample))
     return LiveSearchResponse(
         jobs=[LiveJobItem(**j) for j in sample],

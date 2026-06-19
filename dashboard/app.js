@@ -608,76 +608,34 @@ async function applyEligibleJobs() {
     items[jobId] = { row, title, company };
   }
 
-  let submitted = 0, failed = 0, captchaBlocked = 0;
+  let submitted = 0, failed = 0;
 
   for (const jobId of jobIds) {
     const item = items[jobId];
     const statusEl = item.row.querySelector('.sub-item-status');
-    const spinner = item.row.querySelector('.sub-spinner');
 
-    statusEl.textContent = '⏳ applying...';
+    statusEl.textContent = '⏳ submitting...';
     statusEl.className = 'sub-item-status sub-pending';
 
     try {
-      const matchRes = await fetch(`${API_BASE}/api/automation/match`, {
+      const applyRes = await fetch(`${API_BASE}/api/automation/apply-now`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           profile_id: 'local',
-          raw_text: latestProfile?.raw_text || '',
-          job_ids: [jobId],
-          threshold: 0.3,
-          top_k: 1,
+          job_id: jobId,
         }),
       });
 
-      if (!matchRes.ok) {
-        failed++;
-        item.row.className = 'submission-item sub-error';
-        statusEl.textContent = '❌ failed';
-        statusEl.className = 'sub-item-status sub-error';
-        continue;
-      }
-
-      const matchData = await matchRes.json();
-      const appId = matchData.results?.[0]?.application_id;
-      if (appId) {
-        // Now actually apply via the apply endpoint
-        const applyRes = await fetch(`${API_BASE}/api/automation/apply/${appId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ headless: true, human_review: false }),
-        });
-
-        if (applyRes.ok) {
-          const applyData = await applyRes.json();
-          if (applyData.status === 'captcha_blocked') {
-            captchaBlocked++;
-            item.row.className = 'submission-item sub-captcha';
-            statusEl.textContent = '🧾 captcha';
-            statusEl.className = 'sub-item-status sub-captcha';
-          } else if (applyData.status === 'submitted' || applyData.status === 'success') {
-            submitted++;
-            item.row.className = 'submission-item sub-success';
-            statusEl.textContent = '✅ submitted';
-            statusEl.className = 'sub-item-status sub-success';
-          } else {
-            failed++;
-            item.row.className = 'submission-item sub-error';
-            statusEl.textContent = '❌ ' + (applyData.status || 'error');
-            statusEl.className = 'sub-item-status sub-error';
-          }
-        } else {
-          // matched but couldn't automate apply — still count as created
-          submitted++;
-          item.row.className = 'submission-item sub-success';
-          statusEl.textContent = '✅ submitted';
-          statusEl.className = 'sub-item-status sub-success';
-        }
+      if (applyRes.ok) {
+        submitted++;
+        item.row.className = 'submission-item sub-success';
+        statusEl.textContent = '✅ submitted';
+        statusEl.className = 'sub-item-status sub-success';
       } else {
         failed++;
         item.row.className = 'submission-item sub-error';
-        statusEl.textContent = '❌ no match';
+        statusEl.textContent = '❌ failed';
         statusEl.className = 'sub-item-status sub-error';
       }
     } catch (e) {
@@ -690,10 +648,9 @@ async function applyEligibleJobs() {
 
   const parts = [];
   if (submitted) parts.push(`✅ ${submitted} submitted`);
-  if (captchaBlocked) parts.push(`🧾 ${captchaBlocked} captcha`);
   if (failed) parts.push(`❌ ${failed} failed`);
 
-  addToast(`Done! ${parts.join(' · ')}`, captchaBlocked || failed ? 'warning' : 'success', 8000);
+  addToast(`Done! ${parts.join(' · ')}`, failed ? 'warning' : 'success', 8000);
 
   btn.disabled = false;
   btn.innerHTML = '🤖 Submit Applications';

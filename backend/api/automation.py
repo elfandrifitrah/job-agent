@@ -8,6 +8,7 @@ so the dashboard works without a running database.
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -33,8 +34,8 @@ class MatchRequest(BaseModel):
 
 
 class ApplyRequest(BaseModel):
-    profile_id: str
-    job_id: str
+    profile_id: str = "local"
+    job_id: str = ""
     cover_letter_path: Optional[str] = None
     headless: bool = True
     human_review: bool = True
@@ -130,10 +131,21 @@ async def match_jobs(
     matcher = SemanticMatcher(threshold=req.threshold)
     results = matcher.rank(profile, jobs, top_k=req.top_k)
 
+    # Ensure profile exists for FK / JSON consistency
+    profile_id = req.profile_id or "local"
+    if profile_id == "local":
+        existing = await backend.get_profile("local")
+        if not existing:
+            try:
+                await backend.create_profile({"id": "local", "full_name": "Local Candidate", "raw_text": req.raw_text or ""})
+            except Exception as e:
+                logger.warning("Could not create local profile: %s", e)
+
     saved = 0
+    saved_apps = {}
     for r in results:
         app_data = {
-            "profile_id": req.profile_id,
+            "profile_id": profile_id,
             "job_id": r.job.id,
             "match_score": r.score,
             "status": ApplicationStatus.MATCHED.value if r.passed_threshold else ApplicationStatus.PENDING.value,
@@ -145,6 +157,7 @@ async def match_jobs(
         try:
             app_id = await backend.create_application(app_data)
             saved += 1
+            saved_apps[r.job.id] = app_id
         except Exception as e:
             logger.warning("Could not save match result for job %s: %s", r.job.id, e)
 
@@ -154,6 +167,7 @@ async def match_jobs(
         "results": [
             {
                 "job_id": r.job.id,
+                "application_id": saved_apps.get(r.job.id),
                 "job_title": r.job.title,
                 "company": r.job.company,
                 "score": r.score,
@@ -272,4 +286,43 @@ async def apply_to_job(
         "total_fields": 0,
         "error": None,
         "note": "Application recorded. Browser automation requires PostgreSQL + Playwright setup.",
+    }
+
+
+@router.post("/apply-now")
+async def apply_now(
+    req: ApplyRequest,
+    backend: StorageBackend = Depends(get_backend),
+):
+    """Create an application for a job and mark it as submitted.
+    This is the direct-submit endpoint used by the frontend's
+    'Submit All Eligible' flow — no browser automation needed.
+    """
+    profile_id = req.profile_id or "local"
+    if profile_id == "local":
+        existing = await backend.get_profile("local")
+        if not existing:
+            try:
+                await backend.create_profile({"id": "local", "full_name": "Local Candidate"})
+            except Exception as e:
+                logger.warning("Could not create local profile: %s", e)
+
+    app_data = {
+        "profile_id": profile_id,
+        "job_id": req.job_id,
+        "match_score": 0.0,
+        "status": "submitted",
+    }
+    try:
+        app_id = await backend.create_application(app_data)
+        await backend.update_application_status(app_id, "submitted")
+    except Exception as e:
+        logger.error("Could not create application: %s", e)
+        raise HTTPException(status_code=500, detail=f"Could not create application: {e}")
+
+    return {
+        "status": "submitted",
+        "application_id": app_id,
+        "error": None,
+        "note": "Application created and marked as submitted.",
     }
