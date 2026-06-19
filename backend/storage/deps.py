@@ -13,7 +13,7 @@ from typing import AsyncGenerator
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.database import AsyncSessionLocal
+from backend.database import get_session_factory
 from backend.storage.backend import StorageBackend
 from backend.storage.json_backend import JsonBackend
 from backend.storage.postgres_backend import PostgresBackend
@@ -31,7 +31,7 @@ async def get_backend() -> AsyncGenerator[StorageBackend, None]:
     """
     session: AsyncSession | None = None
     try:
-        session = AsyncSessionLocal()
+        session = get_session_factory()()
         await session.execute(text("SELECT 1"))
     except Exception as e:
         logger.warning("PostgreSQL unavailable (%s), falling back to JSON storage", e)

@@ -19,38 +19,65 @@ from backend.models.db_models import ApplicationModel, Base, JobModel, ProfileMo
 logger = logging.getLogger(__name__)
 
 # ─── Async Engine ───────────────────────────────────────────────────────────
-# Engine and session factory are module-level but can be overridden for testing
-# via override_engine() / override_session_local().
+# Engine and session factory are lazily initialised so the module can be
+# imported even when DATABASE_URL points to an unreachable server or uses
+# a sync driver.  Call get_engine() / get_session_factory() to access them.
 
-def _create_default_engine():
-    return create_async_engine(
-        settings.database_url,
-        echo=False,
-        pool_size=1,
-        max_overflow=0,
-        pool_pre_ping=True,
-    )
+import threading
 
-engine = _create_default_engine()
+_lock = threading.Lock()
+_engine = None
+_session_factory = None
 
-AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
+
+def get_engine():
+    """Return the async engine, creating it on first call."""
+    global _engine
+    if _engine is None:
+        with _lock:
+            if _engine is None:
+                _engine = create_async_engine(
+                    settings.database_url,
+                    echo=False,
+                    pool_size=1,
+                    max_overflow=0,
+                    pool_pre_ping=True,
+                )
+    return _engine
+
+
+def get_session_factory():
+    """Return the async session maker, creating it on first call."""
+    global _session_factory
+    if _session_factory is None:
+        with _lock:
+            if _session_factory is None:
+                _session_factory = async_sessionmaker(
+                    get_engine(),
+                    class_=AsyncSession,
+                    expire_on_commit=False,
+                )
+    return _session_factory
+
+
+# Backward-compatible module-level names (set to None; use get_*() instead)
+engine = None
+AsyncSessionLocal = None
 
 
 # ─── Test helpers — allow tests to swap in an in-memory SQLite engine ────────
 
 def override_engine(new_engine) -> None:
     """Replace the global engine (e.g. with an SQLite test engine)."""
-    global engine
+    global _engine, engine
+    _engine = new_engine
     engine = new_engine
 
 
 def override_session_local(new_session_factory) -> None:
     """Replace the global session factory."""
-    global AsyncSessionLocal
+    global _session_factory, AsyncSessionLocal
+    _session_factory = new_session_factory
     AsyncSessionLocal = new_session_factory
 
 
@@ -59,7 +86,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     Returns 503 if PostgreSQL is unavailable (caller should handle gracefully).
     """
     try:
-        async with AsyncSessionLocal() as session:
+        session_factory = get_session_factory()
+        async with session_factory() as session:
             try:
                 # Test connection
                 await session.execute(text("SELECT 1"))
@@ -79,7 +107,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     """Create all tables if they don't exist. For production, use Alembic instead."""
     try:
-        async with engine.begin() as conn:
+        eng = get_engine()
+        async with eng.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database tables created / verified")
     except Exception as e:
@@ -89,7 +118,8 @@ async def init_db() -> None:
 async def check_db() -> bool:
     """Quick health check — returns True if the database is reachable."""
     try:
-        async with engine.connect() as conn:
+        eng = get_engine()
+        async with eng.connect() as conn:
             await conn.execute(text("SELECT 1"))
         return True
     except Exception as e:
