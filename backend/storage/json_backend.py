@@ -70,10 +70,17 @@ class JsonBackend(StorageBackend):
     async def store_jobs(self, jobs: list[dict[str, Any]]) -> int:
         data = self._get_data()
         existing = data.get("jobs", [])
-        existing.extend(jobs)
+        existing_ids = {j.get("id") for j in existing}
+        added = 0
+        for job in jobs:
+            jid = job.get("id", "")
+            if jid and jid not in existing_ids:
+                existing.append(job)
+                existing_ids.add(jid)
+                added += 1
         data["jobs"] = existing
         self._save()
-        return len(jobs)
+        return added
 
     async def get_job(self, job_id: str) -> Optional[dict[str, Any]]:
         for j in json_storage.get_jobs():

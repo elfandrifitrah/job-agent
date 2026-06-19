@@ -82,16 +82,24 @@ class PostgresBackend(StorageBackend):
         return [_job_to_dict(j) for j in result.scalars().all()]
 
     async def store_jobs(self, jobs: list[dict[str, Any]]) -> int:
-        count = 0
-        from backend.models.db_models import job_to_orm
+        from sqlalchemy import select
+        from backend.models.db_models import job_to_orm, JobModel
         from backend.models.profile import JobPosting
+
+        existing_result = await self.db.execute(select(JobModel.external_id))
+        existing_ids = {row[0] for row in existing_result.all()}
+
+        count = 0
         for job_data in jobs:
-            # Use the existing mapper so Pydantic 'id' maps to ORM 'external_id'
             job = JobPosting(**job_data)
+            if job.id in existing_ids:
+                continue
             orm = job_to_orm(job)
             self.db.add(orm)
+            existing_ids.add(job.id)
             count += 1
-        await self.db.flush()
+        if count:
+            await self.db.flush()
         return count
 
     async def get_job(self, job_id: str) -> Optional[dict[str, Any]]:
